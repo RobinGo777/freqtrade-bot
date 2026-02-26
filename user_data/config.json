@@ -1,0 +1,181 @@
+{
+    "max_open_trades": 5,
+    "stake_currency": "USDT",
+    "stake_amount": "unlimited",
+    "tradable_balance_ratio": 0.99,
+    "fiat_display_currency": "USD",
+
+    "dry_run": true,
+    "dry_run_wallet": 1000,
+    "cancel_open_orders_on_exit": true,
+
+    "trading_mode": "futures",
+    "margin_mode": "isolated",
+
+    "liquidation_buffer": 0.05,
+
+    "leverage_config": {
+        "default": 5
+    },
+
+    "unfilledtimeout": {
+        "entry": 10,
+        "exit": 10,
+        "exit_timeout_count": 0,
+        "unit": "minutes"
+    },
+
+    "entry_pricing": {
+        "price_side": "same",
+        "use_order_book": true,
+        "order_book_top": 1,
+        "price_last_balance": 0.0,
+        "check_depth_of_market": {
+            "enabled": false,
+            "bids_to_ask_delta": 1
+        }
+    },
+
+    "exit_pricing": {
+        "price_side": "same",
+        "use_order_book": true,
+        "order_book_top": 1
+    },
+
+    "exchange": {
+        "name": "binance",
+        "key": "",
+        "secret": "",
+        "ccxt_config": {
+            "enableRateLimit": true,
+            "options": {
+                "defaultType": "swap"
+            }
+        },
+        "ccxt_async_config": {
+            "enableRateLimit": true,
+            "rateLimit": 200
+        },
+        "pair_blacklist": [
+            "(BTC|ETH)/.*",
+
+            "AAVE/USDT:USDT",
+            "AVAX/USDT:USDT",
+            "LINK/USDT:USDT",
+            "XMR/USDT:USDT",
+            "CKB/USDT:USDT",
+            "NMR/USDT:USDT",
+            "GMX/USDT:USDT",
+            "GLM/USDT:USDT",
+
+            "ATOM/USDT:USDT",
+            "UNI/USDT:USDT",
+            "CAKE/USDT:USDT",
+            "ALICE/USDT:USDT",
+            "SSV/USDT:USDT",
+            "FLOW/USDT:USDT",
+            "ARKM/USDT:USDT",
+            "CHZ/USDT:USDT",
+
+            "MOVE/USDT:USDT",
+            "DOOD/USDT:USDT",
+            "HUMA/USDT:USDT",
+            "MASK/USDT:USDT",
+            "DOLO/USDT:USDT",
+            "PUFFER/USDT:USDT",
+            "ON/USDT:USDT",
+            "SOMI/USDT:USDT",
+            "TST/USDT:USDT",
+            "SCRT/USDT:USDT",
+
+            "FRAX/USDT:USDT",
+            "USDC/USDT:USDT",
+            "BUSD/USDT:USDT",
+            "TUSD/USDT:USDT",
+            "FDUSD/USDT:USDT",
+            "DAI/USDT:USDT",
+            "PAXG/USDT:USDT",
+            "XAU/USDT:USDT",
+            "XAG/USDT:USDT",
+            "STABLE/USDT:USDT",
+            "STBL/USDT:USDT"
+        ]
+    },
+
+    "pairlists": [
+        {
+            "method": "VolumePairList",
+            "number_assets": 150,
+            "sort_key": "quoteVolume",
+            "min_value": 20000000,
+            "refresh_period": 1800
+        },
+        {
+            "method": "AgeFilter",
+            "min_days_listed": 30
+        },
+        {
+            "method": "PrecisionFilter"
+        },
+        {
+            "method": "PriceFilter",
+            "low_price_ratio": 0.01
+        },
+        {
+            "method": "SpreadFilter",
+            "max_spread_ratio": 0.005
+        }
+    ],
+
+    "telegram": {
+        "enabled": true,
+        "token": "YOUR_BOT_TOKEN_HERE",
+        "chat_id": "YOUR_CHAT_ID_HERE",
+        "notification_settings": {
+            "status": "on",
+            "warning": "on",
+            "startup": "on",
+            "entry": "on",
+            "entry_fill": "on",
+            "exit": {
+                "roi": "on",
+                "emergency_exit": "on",
+                "force_exit": "on",
+                "exit_signal": "on",
+                "trailing_stop_loss": "on",
+                "stop_loss": "on",
+                "stoploss_on_exchange": "on",
+                "custom_exit": "on",
+                "partial_exit": "on"
+            },
+            "exit_fill": "on",
+            "entry_cancel": "on",
+            "exit_cancel": "on",
+            "protection_trigger": "on",
+            "protection_trigger_global": "on"
+        },
+        "reload": true,
+        "balance_dust_level": 0.01
+    },
+
+    "api_server": {
+        "enabled": true,
+        "listen_ip_address": "0.0.0.0",
+        "listen_port": 8080,
+        "verbosity": "error",
+        "enable_openapi": false,
+        "jwt_secret_key": "jh388ghj34589fgjkl34590fdg",
+        "ws_token": "token_777345_dfg_234",
+        "CORS_origins": [],
+        "username": "freqtrade",
+        "password": "wer45sD4Sw45"
+    },
+
+    "bot_name": "RSIDivergence12H_v4",
+    "initial_state": "running",
+    "force_entry_enable": false,
+
+    "internals": {
+        "process_throttle_secs": 5
+    }
+}
