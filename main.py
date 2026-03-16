@@ -1098,7 +1098,7 @@ async def send_quiz_to_telegram(data: dict, rubric: str) -> bool:
         "options":         json.dumps(options),
         "type":            "quiz",
         "correct_option_id": int(correct),
-        "is_anonymous":    False,
+        "is_anonymous":    True,
         "explanation":     explanation if explanation else "",
     }
 
