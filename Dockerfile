@@ -1,0 +1,63 @@
+# ──────────────────────────────────────────────
+# English A2 Telegram Bot — Dockerfile
+# Python 3.11 + Playwright Chromium
+# ──────────────────────────────────────────────
+FROM python:3.11-slim
+
+# Системні залежності для Playwright/Chromium
+RUN apt-get update && apt-get install -y \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libatspi2.0-0 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libxkbcommon0 \
+    libasound2 \
+    libnspr4 \
+    libnss3 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcursor1 \
+    libxi6 \
+    libxtst6 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libcairo2 \
+    libglib2.0-0 \
+    libdbus-1-3 \
+    libexpat1 \
+    fonts-liberation \
+    fonts-noto \
+    wget \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Робоча директорія
+WORKDIR /app
+
+# Копіюємо залежності першими (кешування шарів)
+COPY requirements.txt .
+
+# Оновлюємо pip і встановлюємо залежності
+RUN pip install --upgrade pip setuptools wheel \
+    && pip install -r requirements.txt
+
+# Встановлюємо Playwright Chromium
+RUN playwright install chromium
+
+# Копіюємо код
+COPY main.py .
+
+# Порт для health check
+EXPOSE 10000
+
+# Timezone
+ENV TZ=Europe/Kyiv
+
+# Запуск з повним шляхом
+CMD ["python", "/app/main.py"]
