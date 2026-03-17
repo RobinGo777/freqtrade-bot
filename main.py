@@ -879,7 +879,7 @@ body {{
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 50px;
-  padding: 20px 48px;
+  padding: 14px 36px;
   z-index: 10;
   border: 1px solid rgba(255,255,255,0.15);
 }}
@@ -900,7 +900,7 @@ body {{
   justify-content: center;
   align-items: center;
   padding: 200px 64px 120px 64px;
-  gap: 40px;
+  gap: 50px;
   z-index: 5;
 }}
 .glass-block {{
@@ -934,18 +934,20 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
     ts_soft   = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
     blocks = f"""
-  <div class="glass-block" style="padding: 72px 56px;">
+  <div class="glass-block" style="height:480px; padding: 56px; display:flex;
+       align-items:center; overflow:hidden;">
     <div style="font-size:68px; font-weight:800; color:#ffffff;
                 {ts_strong} line-height:1.2;">
       {phrase}
     </div>
   </div>
-  <div class="glass-block" style="padding: 52px 56px;">
+  <div class="glass-block" style="height:480px; padding: 56px; display:flex;
+       flex-direction:column; justify-content:center; overflow:hidden;">
     <div style="font-size:68px; font-weight:700; color:#ffffff;
                 {ts_strong} line-height:1.3; margin-bottom:30px;">
       {ex_en}
     </div>
-    <div style="font-size:54px; font-weight:400; color:rgba(220,235,255,0.95);
+    <div style="font-size:54px; font-weight:400; color:rgba(180,210,255,0.95);
                 {ts_soft} line-height:1.3;">
       {ex_ua}
     </div>
@@ -954,17 +956,16 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
 
 
 def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
-    phrases     = data.get("phrases", [])
-    topic_name  = category.get("name", "")
-    topic_emoji = category.get("emoji", "")
+    phrases    = data.get("phrases", [])
+    topic_name = category.get("name", "")
     ts_strong = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
     ts_soft   = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
     topic_header = f"""
   <div style="width:100%; text-align:left; padding: 0 8px; margin-bottom:4px;">
-    <div style="font-size:66px; font-weight:800; color:#ffffff;
+    <div style="font-size:62px; font-weight:800; color:rgba(180,210,255,0.95);
                 {ts_strong} line-height:1.1;">
-      {topic_emoji} {topic_name}
+      {topic_name}
     </div>
   </div>"""
 
@@ -974,11 +975,11 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
         ua = p.get("ua", "")
         blocks += f"""
   <div class="glass-block" style="padding: 28px 52px;">
-    <div style="font-size:52px; font-weight:700; color:#ffffff;
+    <div style="font-size:56px; font-weight:700; color:#ffffff;
                 {ts_strong} line-height:1.25; margin-bottom:20px;">
       {en}
     </div>
-    <div style="font-size:44px; font-weight:400; color:rgba(220,235,255,0.95);
+    <div style="font-size:48px; font-weight:400; color:rgba(180,210,255,0.95);
                 {ts_soft} line-height:1.25;">
       {ua}
     </div>
@@ -1000,16 +1001,19 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
                       — {author}</div>''' if show_author else ""
 
     blocks = f"""
-  <div class="glass-block" style="padding: 72px 56px;">
-    <div style="font-size:clamp(56px,6vw,72px); font-weight:800; color:#ffffff;
+  <div class="glass-block" style="height:480px; padding: 56px; display:flex;
+       flex-direction:column; justify-content:center; overflow:hidden;">
+    <div style="font-size:clamp(52px,5.5vw,68px); font-weight:800; color:#ffffff;
                 {ts_strong} line-height:1.3;">
       \"{quote_en}\"
     </div>
     {author_line}
   </div>
-  <div class="glass-block" style="padding: 52px 56px;">
-    <div style="font-size:58px; font-weight:400; color:rgba(220,235,255,0.95);
-                {ts_soft} line-height:1.35; text-align:left;">
+  <div class="glass-block" style="height:480px; padding: 56px; display:flex;
+       align-items:center; overflow:hidden;">
+    <div style="font-size:clamp(52px,5.5vw,68px); font-weight:800;
+                color:rgba(180,210,255,0.95);
+                {ts_soft} line-height:1.3; text-align:left;">
       \"{quote_ua}\"
     </div>
   </div>"""
