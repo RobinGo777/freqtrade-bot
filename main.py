@@ -52,8 +52,8 @@ PIXABAY_API_KEY      = os.environ.get("PIXABAY_API_KEY", "")
 # Замініть на актуальні моделі після верифікації картки
 GEMINI_MODELS = [
     "gemini-3.1-flash-lite-preview",   # модель 1 — замініть
-    "gemini-2.5-flash-lite",                  # модель 2 — замініть
-    "gemini-2.5-flash",             # модель 3 — запасна
+    "gemini-2.0-flash",                  # модель 2 — замініть
+    "gemini-2.0-flash-lite",             # модель 3 — запасна
 ]
 
 # ──────────────────────────────────────────────
