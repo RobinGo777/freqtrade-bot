@@ -52,8 +52,8 @@ PIXABAY_API_KEY      = os.environ.get("PIXABAY_API_KEY", "")
 # Замініть на актуальні моделі після верифікації картки
 GEMINI_MODELS = [
     "gemini-3.1-flash-lite-preview",   # модель 1 — замініть
-    "gemini-2.5-flash-lite",                  # модель 2 — замініть
-    "gemini-2.5-flash",             # модель 3 — запасна
+    "gemini-2.0-flash",                  # модель 2 — замініть
+    "gemini-2.0-flash-lite",             # модель 3 — запасна
 ]
 
 # ──────────────────────────────────────────────
@@ -238,8 +238,8 @@ HOLIDAYS = {
 # СЕЗОНИ ТА МІСЯЦІ — ФОНИ ДЛЯ DAILY PHRASE
 # ──────────────────────────────────────────────
 SEASON_PHOTOS = {
-    "spring": ["cherry blossom branch bokeh", "spring meadow wildflowers sunrise", "green forest path morning light"],
-    "summer": ["tropical beach turquoise water aerial", "sunflower field golden hour", "mountain lake reflection summer"],
+    "spring": ["cherry blossom branch bokeh dramatic", "spring meadow sunrise dramatic golden hour", "green forest path morning light"],
+    "summer": ["tropical beach sunset aerial dramatic golden", "sunflower field golden hour", "mountain lake reflection summer"],
     "autumn": ["maple leaves golden light forest", "misty autumn forest path", "vineyard autumn sunset"],
     "winter": ["snow covered pine forest sunrise", "frozen lake mountains winter", "cozy snow landscape blue hour"],
 }
@@ -256,20 +256,20 @@ MONTH_PHOTOS = {
     9:  ["misty forest golden autumn", "harvest field warm light"],
     10: ["maple forest peak foliage aerial", "pumpkin field autumn fog"],
     11: ["foggy forest moody autumn", "rain drops window bokeh"],
-    12: ["snowy pine forest blue hour", "frozen river winter landscape"],
+    12: ["snowy forest blue hour dramatic moody", "frozen river winter landscape"],
 }
 
 ATMOSPHERE_PHOTOS = [
     "minimalist coffee cup overhead flat lay",
-    "modern city skyline golden hour aerial",
+    "city skyline golden hour aerial dramatic",
     "misty forest path morning rays",
     "clean desk setup natural light minimal",
-    "dramatic sunrise mountain horizon",
+    "mountain sunrise horizon dramatic golden moody",
     "architectural minimal concrete geometry",
 ]
 
 QUOTE_PHOTOS = [
-    "misty forest sunbeams dramatic",
+    "misty forest sunbeams dramatic golden moody",
     "mountain peak sunrise alpenglow dramatic",
     "ocean horizon sunrise golden dramatic",
     "pine forest fog morning rays",
@@ -905,12 +905,12 @@ body {{
 }}
 .glass-block {{
   width: 100%;
-  background: rgba(240, 240, 245, 0.42);
+  background: rgba(200, 200, 210, 0.30);
   backdrop-filter: blur(28px);
   -webkit-backdrop-filter: blur(28px);
   border-radius: 32px;
   padding: 52px 60px;
-  border: 1px solid rgba(255,255,255,0.55);
+  border: 1px solid rgba(255,255,255,0.30);
   box-shadow: 0 8px 32px rgba(0,0,0,0.22);
 }}
 </style>
@@ -934,20 +934,20 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
     ts_soft   = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
     blocks = f"""
-  <div class="glass-block" style="height:480px; padding: 56px; display:flex;
-       align-items:center; overflow:hidden;">
+  <div class="glass-block" style="height:480px; padding:56px; display:flex;
+       align-items:center; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:68px; font-weight:800; color:#ffffff;
                 {ts_strong} line-height:1.2;">
       {phrase}
     </div>
   </div>
-  <div class="glass-block" style="height:480px; padding: 56px; display:flex;
-       flex-direction:column; justify-content:center; overflow:hidden;">
+  <div class="glass-block" style="height:480px; padding:56px; display:flex;
+       flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:68px; font-weight:700; color:#ffffff;
                 {ts_strong} line-height:1.3; margin-bottom:30px;">
       {ex_en}
     </div>
-    <div style="font-size:54px; font-weight:400; color:rgba(180,210,255,0.95);
+    <div style="font-size:54px; font-weight:400; color:rgba(255,255,255,0.90);
                 {ts_soft} line-height:1.3;">
       {ex_ua}
     </div>
@@ -958,11 +958,12 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
 def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     phrases    = data.get("phrases", [])
     topic_name = category.get("name", "")
-    ts_strong = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
-    ts_soft   = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
+    ts_strong  = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
+    ts_soft    = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
+    # Заголовок теми — синій, без емодзі
     topic_header = f"""
-  <div style="width:100%; text-align:left; padding: 0 8px; margin-bottom:4px;">
+  <div style="width:100%; text-align:left; padding:0 8px; margin-bottom:4px;">
     <div style="font-size:62px; font-weight:800; color:rgba(180,210,255,0.95);
                 {ts_strong} line-height:1.1;">
       {topic_name}
@@ -974,13 +975,14 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
         en = p.get("en", "")
         ua = p.get("ua", "")
         blocks += f"""
-  <div class="glass-block" style="padding: 28px 52px;">
-    <div style="font-size:56px; font-weight:700; color:#ffffff;
-                {ts_strong} line-height:1.25; margin-bottom:20px;">
+  <div class="glass-block" style="height:210px; padding:24px 52px; display:flex;
+       flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
+    <div style="font-size:52px; font-weight:700; color:#ffffff;
+                {ts_strong} line-height:1.2; margin-bottom:12px;">
       {en}
     </div>
-    <div style="font-size:48px; font-weight:400; color:rgba(180,210,255,0.95);
-                {ts_soft} line-height:1.25;">
+    <div style="font-size:44px; font-weight:400; color:rgba(255,255,255,0.88);
+                {ts_soft} line-height:1.2;">
       {ua}
     </div>
   </div>"""
@@ -1001,18 +1003,17 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
                       — {author}</div>''' if show_author else ""
 
     blocks = f"""
-  <div class="glass-block" style="height:480px; padding: 56px; display:flex;
-       flex-direction:column; justify-content:center; overflow:hidden;">
+  <div class="glass-block" style="height:480px; padding:56px; display:flex;
+       flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:clamp(52px,5.5vw,68px); font-weight:800; color:#ffffff;
                 {ts_strong} line-height:1.3;">
       \"{quote_en}\"
     </div>
     {author_line}
   </div>
-  <div class="glass-block" style="height:480px; padding: 56px; display:flex;
-       align-items:center; overflow:hidden;">
-    <div style="font-size:clamp(52px,5.5vw,68px); font-weight:800;
-                color:rgba(180,210,255,0.95);
+  <div class="glass-block" style="height:480px; padding:56px; display:flex;
+       align-items:center; overflow:hidden; box-sizing:border-box;">
+    <div style="font-size:clamp(52px,5.5vw,68px); font-weight:400; color:rgba(255,255,255,0.90);
                 {ts_soft} line-height:1.3; text-align:left;">
       \"{quote_ua}\"
     </div>
