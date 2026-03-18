@@ -52,7 +52,7 @@ PIXABAY_API_KEY      = os.environ.get("PIXABAY_API_KEY", "")
 # Замініть на актуальні моделі після верифікації картки
 GEMINI_MODELS = [
     "gemini-3.1-flash-lite-preview",   # модель 1 — замініть
-    "gemini-2.5-flash-preview-04-17",                  # модель 2 — замініть
+    "gemini-2.0-flash",                  # модель 2 — замініть
     "gemini-2.0-flash-lite",             # модель 3 — запасна
 ]
 
@@ -453,23 +453,30 @@ async def fetch_photo_unsplash(query: str, use_topics: bool = True) -> str | Non
         log.warning("⚠️ UNSPLASH_ACCESS_KEY not set")
         return None
     try:
-        url = "https://api.unsplash.com/photos/random"
+        # Отримуємо 5 фото і вибираємо найкраще за лайками
+        url = "https://api.unsplash.com/search/photos"
         params = {
             "query": query,
             "orientation": "portrait",
             "content_filter": "high",
+            "per_page": 10,
         }
-        # topics тільки для Daily Phrase і Quote — не для Situation Phrases
         if use_topics:
-            params["topics"] = "6sMVjTLSkeQ,bo8jQKTaE0Y,Fzo3zuOHN6w"
+            params["collections"] = "bo8jQKTaE0Y,6sMVjTLSkeQ"
         headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(url, params=params, headers=headers)
             log.info(f"📷 Unsplash response: status={resp.status_code} query='{query}'")
             if resp.status_code == 200:
                 data = resp.json()
-                photo_url = data["urls"]["regular"]
-                log.info(f"✅ Unsplash photo found: {photo_url[:80]}")
+                photos = data.get("results", [])
+                if not photos:
+                    log.warning(f"⚠️ Unsplash: no results for query '{query}'")
+                    return None
+                # Вибираємо фото з найбільшою кількістю лайків з перших 5
+                best = max(photos[:5], key=lambda p: p.get("likes", 0))
+                photo_url = best["urls"]["regular"]
+                log.info(f"✅ Unsplash best photo: likes={best.get('likes',0)} url={photo_url[:60]}")
                 return photo_url
             else:
                 log.warning(f"⚠️ Unsplash failed: {resp.status_code} — {resp.text[:200]}")
@@ -633,12 +640,15 @@ Return ONLY valid JSON, no markdown, no extra text:
 {{
   "phrase_en": "the English phrase (minimum 5 words, max 80 characters)",
   "example_en": "one example sentence using the phrase in context (max 140 characters)",
-  "example_ua": "Ukrainian translation of the example sentence (max 140 characters)"
+  "example_ua": "Ukrainian translation of the example sentence (max 140 characters)",
+  "photo_query": "3-5 keywords for stock photo search: emotion + scene + style (minimal aesthetic cinematic soft light)"
 }}
 Rules:
 - Minimum 5 words in the phrase — avoid very short phrases like "See you" or "Thank you"
 - Simple A2 vocabulary, natural everyday conversation
 - Example sentence must use the phrase naturally in context
+- photo_query: extract emotion and visual scene from the phrase, add: minimal aesthetic cinematic soft light
+- photo_query examples: "sunrise road hope minimal cinematic", "coffee morning cozy soft light aesthetic"
 {LANGUAGE_CENSOR}"""
 
     if rubric == "situation_phrases":
@@ -654,11 +664,14 @@ Return ONLY valid JSON, no markdown, no extra text:
     {{"en": "english phrase (max 70 chars)", "ua": "ukrainian translation (max 80 chars)"}},
     {{"en": "english phrase (max 70 chars)", "ua": "ukrainian translation (max 80 chars)"}},
     {{"en": "english phrase (max 70 chars)", "ua": "ukrainian translation (max 80 chars)"}}
-  ]
+  ],
+  "photo_query": "3-5 keywords for stock photo: scene + mood + style (minimal aesthetic cinematic soft light)"
 }}
 Rules:
 - Practical A2 level phrases for the situation
 - Each phrase must be different and useful
+- photo_query: visual scene related to the situation, add: minimal aesthetic cinematic soft light
+- photo_query examples: "airport runway night dramatic cinematic", "restaurant evening bokeh soft light aesthetic"
 {LANGUAGE_CENSOR}"""
 
     if rubric == "quote_motivation":
@@ -668,7 +681,8 @@ Return ONLY valid JSON, no markdown, no extra text:
 {{
   "quote_en": "the quote in English (minimum 6 words, maximum 12 words, simple A2 vocabulary)",
   "author": "author name (or 'Unknown' if not known)",
-  "quote_ua": "Ukrainian translation (natural, not word-for-word)"
+  "quote_ua": "Ukrainian translation (natural, not word-for-word)",
+  "photo_query": "3-5 keywords for stock photo: emotion + scene + style (minimal aesthetic cinematic soft light)"
 }}
 Rules:
 - Minimum 6 words — NEVER generate quotes like 'Just do it', 'Dream big', 'Stay strong' (too short)
@@ -839,7 +853,8 @@ async def generate_content(rubric: str, history: list, extra: dict = None) -> di
 # ──────────────────────────────────────────────
 # HTML ШАБЛОНИ — GLASSMORPHISM
 # ──────────────────────────────────────────────
-def html_base(photo_b64: str, topbar_text: str, content_blocks: str) -> str:
+def html_base(photo_b64: str, content_blocks: str) -> str:
+    """HTML шаблон без topbar — мінімалістичний дизайн."""
     return f"""<!DOCTYPE html>
 <html>
 <head>
@@ -876,25 +891,6 @@ body {{
   );
   z-index: 1;
 }}
-.topbar {{
-  position: absolute;
-  top: 56px;
-  right: 56px;
-  background: rgba(30, 30, 30, 0.75);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 50px;
-  padding: 14px 36px;
-  z-index: 10;
-  border: 1px solid rgba(255,255,255,0.15);
-}}
-.topbar-text {{
-  font-size: 48px;
-  font-weight: 700;
-  color: #ffffff;
-  white-space: nowrap;
-  letter-spacing: 0.5px;
-}}
 .content {{
   position: absolute;
   top: 0; left: 0;
@@ -904,7 +900,7 @@ body {{
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 200px 64px 120px 64px;
+  padding: 120px 64px;
   gap: 50px;
   z-index: 5;
 }}
@@ -923,7 +919,6 @@ body {{
 <body>
 <div class="bg"></div>
 <div class="bg-overlay"></div>
-<div class="topbar"><span class="topbar-text">{topbar_text}</span></div>
 <div class="content">
 {content_blocks}
 </div>
@@ -960,7 +955,7 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
       {ex_ua}
     </div>
   </div>"""
-    return html_base(photo_b64, "Daily Phrase", blocks)
+    return html_base(photo_b64, blocks)
 
 
 def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
@@ -969,12 +964,11 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     ts_strong  = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
     ts_soft    = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
-    # Знаходимо найдовшу фразу для визначення висоти блоку
+    # Адаптивна висота блоків під найдовшу фразу
     max_chars = max(
         (len(p.get("en", "")) + len(p.get("ua", "")) for p in phrases[:5]),
         default=100
     )
-    # Адаптивна висота: базова 180px + додатково за довжиною
     if max_chars <= 80:
         block_height = 180
     elif max_chars <= 120:
@@ -983,12 +977,11 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
         block_height = 240
     else:
         block_height = 270
-
     log.info(f"📐 Situation block height: {block_height}px (max_chars={max_chars})")
 
     topic_header = f"""
   <div style="width:100%; text-align:left; padding:0 8px; margin-bottom:4px;">
-    <div style="font-size:62px; font-weight:800; color:rgba(180,210,255,0.95);
+    <div style="font-size:68px; font-weight:800; color:rgba(255,245,200,0.95);
                 {ts_strong} line-height:1.1;">
       {topic_name}
     </div>
@@ -1010,8 +1003,8 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
       {ua}
     </div>
   </div>"""
-    # Situation Phrases має менший gap між блоками
-    html = html_base(photo_b64, "Situation Phrases", blocks)
+
+    html = html_base(photo_b64, blocks)
     html = html.replace("gap: 50px;", "gap: 25px;", 1)
     return html
 
@@ -1045,7 +1038,7 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
       \"{quote_ua}\"
     </div>
   </div>"""
-    return html_base(photo_b64, "Quote", blocks)
+    return html_base(photo_b64, blocks)
 
 # ──────────────────────────────────────────────
 # PLAYWRIGHT — HTML → PNG
@@ -1202,12 +1195,6 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
         import base64
         photo_b64 = base64.b64encode(photo_bytes).decode("utf-8")
         log.info(f"✅ Photo ready for [{rubric}]: {len(photo_bytes)//1024}KB")
-
-        # 3. Генеруємо контент
-        history = await history_mgr.get_used(rubric)
-        log.info(f"🤖 Generating content for [{rubric}]...")
-        data = await generate_content(rubric, history, extra)
-        log.info(f"✅ Content: {json.dumps(data, ensure_ascii=False)[:200]}")
 
         # 4. Будуємо HTML
         if rubric == "daily_phrase":
