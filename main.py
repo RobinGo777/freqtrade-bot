@@ -52,8 +52,8 @@ PIXABAY_API_KEY      = os.environ.get("PIXABAY_API_KEY", "")
 # Замініть на актуальні моделі після верифікації картки
 GEMINI_MODELS = [
     "gemini-3.1-flash-lite-preview",   # модель 1 — замініть
-    "gemini-2.0-flash",                  # модель 2 — замініть
-    "gemini-2.0-flash-lite",             # модель 3 — запасна
+    "gemini-2.5-flash-lite",                  # модель 2 — замініть
+    "gemini-2.5-flash-preview-04-17",             # модель 3 — запасна
 ]
 
 # ──────────────────────────────────────────────
@@ -454,10 +454,13 @@ async def fetch_photo_unsplash(query: str) -> str | None:
         return None
     try:
         url = "https://api.unsplash.com/photos/random"
+        # topics: природа, шпалери, подорожі — естетичні фото без інтер'єрів
+        UNSPLASH_TOPICS = "6sMVjTLSkeQ,bo8jQKTaE0Y,Fzo3zuOHN6w"
         params = {
             "query": query,
             "orientation": "portrait",
             "content_filter": "high",
+            "topics": UNSPLASH_TOPICS,
         }
         headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
         async with httpx.AsyncClient(timeout=15) as client:
@@ -628,12 +631,14 @@ def get_prompt(rubric: str, used_history: list, extra: dict = None) -> str:
 {history_note}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
-  "phrase_en": "the English phrase (max 60 characters)",
-  "example_en": "one example sentence using the phrase (max 120 characters)",
-  "example_ua": "Ukrainian translation of the example sentence (max 120 characters)"
+  "phrase_en": "the English phrase (minimum 5 words, max 80 characters)",
+  "example_en": "one example sentence using the phrase in context (max 140 characters)",
+  "example_ua": "Ukrainian translation of the example sentence (max 140 characters)"
 }}
 Rules:
-- Simple A2 vocabulary, natural everyday conversation, short sentences
+- Minimum 5 words in the phrase — avoid very short phrases like "See you" or "Thank you"
+- Simple A2 vocabulary, natural everyday conversation
+- Example sentence must use the phrase naturally in context
 {LANGUAGE_CENSOR}"""
 
     if rubric == "situation_phrases":
@@ -875,7 +880,7 @@ body {{
   position: absolute;
   top: 56px;
   right: 56px;
-  background: rgba(30, 30, 30, 0.65);
+  background: rgba(30, 30, 30, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-radius: 50px;
@@ -934,20 +939,23 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
     ts_soft   = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
     blocks = f"""
-  <div class="glass-block" style="height:480px; padding:56px; display:flex;
+  <div class="glass-block" style="height:300px; padding:48px 56px; display:flex;
        align-items:center; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:68px; font-weight:800; color:#ffffff;
                 {ts_strong} line-height:1.2;">
       {phrase}
     </div>
   </div>
-  <div class="glass-block" style="height:480px; padding:56px; display:flex;
-       flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
-    <div style="font-size:68px; font-weight:700; color:#ffffff;
-                {ts_strong} line-height:1.3; margin-bottom:30px;">
+  <div class="glass-block" style="height:400px; padding:48px 56px; display:flex;
+       align-items:center; overflow:hidden; box-sizing:border-box; margin-top:50px;">
+    <div style="font-size:68px; font-weight:800; color:#ffffff;
+                {ts_strong} line-height:1.3;">
       {ex_en}
     </div>
-    <div style="font-size:54px; font-weight:400; color:rgba(255,255,255,0.90);
+  </div>
+  <div class="glass-block" style="height:400px; padding:48px 56px; display:flex;
+       align-items:center; overflow:hidden; box-sizing:border-box;">
+    <div style="font-size:68px; font-weight:800; color:#ffffff;
                 {ts_soft} line-height:1.3;">
       {ex_ua}
     </div>
@@ -961,7 +969,6 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     ts_strong  = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
     ts_soft    = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
-    # Заголовок теми — синій, без емодзі
     topic_header = f"""
   <div style="width:100%; text-align:left; padding:0 8px; margin-bottom:4px;">
     <div style="font-size:62px; font-weight:800; color:rgba(180,210,255,0.95);
@@ -1013,7 +1020,7 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
   </div>
   <div class="glass-block" style="height:480px; padding:56px; display:flex;
        align-items:center; overflow:hidden; box-sizing:border-box;">
-    <div style="font-size:clamp(52px,5.5vw,68px); font-weight:800; color:rgba(255,255,255,0.90);
+    <div style="font-size:clamp(52px,5.5vw,68px); font-weight:800; color:#ffffff;
                 {ts_soft} line-height:1.3; text-align:left;">
       \"{quote_ua}\"
     </div>
