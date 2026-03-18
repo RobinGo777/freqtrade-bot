@@ -53,7 +53,7 @@ PIXABAY_API_KEY      = os.environ.get("PIXABAY_API_KEY", "")
 GEMINI_MODELS = [
     "gemini-3.1-flash-lite-preview",   # модель 1 — замініть
     "gemini-2.5-flash-preview-04-17",                  # модель 2 — замініть
-    "gemini-2.5-flash-lite",             # модель 3 — запасна
+    "gemini-2.0-flash-lite",             # модель 3 — запасна
 ]
 
 # ──────────────────────────────────────────────
@@ -79,109 +79,109 @@ SITUATION_CATEGORIES = [
     {
         "name": "Airport",
         "emoji": "✈️",
-        "photo_query": "airplane sky clouds sunset golden hour dusk dramatic",
+        "photo_query": "airplane wing sky clouds dramatic dusk sunset",
         "description": "At the airport (check-in, gates, boarding, announcements)",
     },
     {
         "name": "Restaurant",
         "emoji": "🍽️",
-        "photo_query": "outdoor cafe terrace sunset golden hour dusk dramatic",
+        "photo_query": "restaurant terrace evening lights bokeh dusk",
         "description": "In a restaurant (ordering, menu, bill, complaining politely)",
     },
     {
         "name": "Hotel",
         "emoji": "🏨",
-        "photo_query": "luxury resort pool sunset tropical golden hour dusk dramatic",
+        "photo_query": "hotel pool sunset tropical evening dramatic",
         "description": "At the hotel (check-in, check-out, room service, Wi-Fi)",
     },
     {
         "name": "Shopping",
         "emoji": "🛍️",
-        "photo_query": "colorful market street outdoor bokeh dusk dramatic",
+        "photo_query": "shopping street evening lights bokeh dramatic dusk",
         "description": "Shopping (prices, sizes, colors, returns, discounts)",
     },
     {
         "name": "Social",
         "emoji": "🤝",
-        "photo_query": "friends outdoor park sunset golden hour dusk dramatic",
+        "photo_query": "friends silhouette sunset park golden dramatic dusk",
         "description": "Social situations (meeting people, small talk, invitations)",
     },
     {
         "name": "Emergencies",
         "emoji": "🚨",
-        "photo_query": "morning nature walk green bokeh golden hour dusk dramatic",
+        "photo_query": "nature path green bokeh morning dramatic golden",
         "description": "Emergencies (police, ambulance, lost items, asking for help)",
     },
     {
         "name": "Weather",
         "emoji": "🌤️",
-        "photo_query": "dramatic storm clouds sky landscape golden hour dusk",
+        "photo_query": "dramatic storm clouds sky landscape dark moody",
         "description": "Weather (forecast, seasons, likes and dislikes about weather)",
     },
     {
         "name": "Daily Life",
         "emoji": "🌅",
-        "photo_query": "city street golden hour dusk dramatic bokeh",
+        "photo_query": "city street evening golden hour bokeh dramatic",
         "description": "Daily life (morning routine, work, hobbies, weekend)",
     },
     {
         "name": "Health",
         "emoji": "🏥",
-        "photo_query": "nature park peaceful green morning golden hour dusk dramatic",
+        "photo_query": "green nature park morning peaceful bokeh dramatic",
         "description": "Health (doctor visit, pharmacy, symptoms, healthy habits)",
     },
     {
         "name": "Technology",
         "emoji": "💻",
-        "photo_query": "technology abstract bokeh lights dramatic dusk golden",
+        "photo_query": "city lights bokeh abstract night dramatic dark",
         "description": "Technology (smartphone, apps, Wi-Fi, online shopping)",
     },
     {
         "name": "Entertainment",
         "emoji": "🎬",
-        "photo_query": "night city lights bokeh colorful dramatic dusk",
+        "photo_query": "theater stage curtain dramatic night bokeh",
         "description": "Entertainment (cinema, theater, music, sports events)",
     },
     {
         "name": "Holidays",
         "emoji": "🎉",
-        "photo_query": "bokeh celebration lights colorful night dramatic dusk",
+        "photo_query": "celebration fireworks bokeh night colorful dramatic",
         "description": "Holidays (birthday, Christmas, Easter, congratulations)",
     },
     {
         "name": "Friends",
         "emoji": "👫",
-        "photo_query": "friends silhouette golden hour meadow sunset dramatic dusk",
+        "photo_query": "friends silhouette golden hour sunset dramatic field",
         "description": "Friends (making plans, feelings, apologies, compliments)",
     },
     {
         "name": "Education",
         "emoji": "📚",
-        "photo_query": "autumn park path books golden hour dusk dramatic",
+        "photo_query": "autumn park path golden leaves dramatic dusk sunset",
         "description": "Education (homework, teacher, exams, classroom phrases)",
     },
     {
         "name": "Work",
         "emoji": "💼",
-        "photo_query": "city skyline business district dramatic golden hour dusk",
+        "photo_query": "city skyline evening dramatic golden dusk bokeh",
         "description": "Work (job interview, office, meetings, day off request)",
     },
     {
         "name": "Banking",
         "emoji": "🏦",
-        "photo_query": "city financial district skyline aerial dramatic golden dusk",
+        "photo_query": "city financial district skyline dramatic night lights",
         "description": "Banking (account, ATM, exchange rates, transfers)",
     },
     {
         "name": "Sports",
         "emoji": "⚽",
-        "photo_query": "sports field stadium aerial dramatic golden hour dusk",
+        "photo_query": "sports field sunset aerial dramatic golden dusk",
         "description": "Sports (gym, playing sports, injury, competition)",
     },
     {
         "name": "Transport",
         "emoji": "🚌",
-        "photo_query": "train tracks landscape sunset dramatic golden hour dusk",
+        "photo_query": "train tracks sunset landscape dramatic golden dusk",
         "description": "Transport (bus, train, metro tickets, delays, directions)",
     },
 ]
@@ -448,20 +448,20 @@ class HistoryManager:
 # ──────────────────────────────────────────────
 # ФОТО API
 # ──────────────────────────────────────────────
-async def fetch_photo_unsplash(query: str) -> str | None:
+async def fetch_photo_unsplash(query: str, use_topics: bool = True) -> str | None:
     if not UNSPLASH_ACCESS_KEY:
         log.warning("⚠️ UNSPLASH_ACCESS_KEY not set")
         return None
     try:
         url = "https://api.unsplash.com/photos/random"
-        # topics: природа, шпалери, подорожі — естетичні фото без інтер'єрів
-        UNSPLASH_TOPICS = "6sMVjTLSkeQ,bo8jQKTaE0Y,Fzo3zuOHN6w"
         params = {
             "query": query,
             "orientation": "portrait",
             "content_filter": "high",
-            "topics": UNSPLASH_TOPICS,
         }
+        # topics тільки для Daily Phrase і Quote — не для Situation Phrases
+        if use_topics:
+            params["topics"] = "6sMVjTLSkeQ,bo8jQKTaE0Y,Fzo3zuOHN6w"
         headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.get(url, params=params, headers=headers)
@@ -551,13 +551,13 @@ async def fetch_photo_pixabay(query: str) -> str | None:
         return None
 
 
-async def fetch_photo(query: str) -> str | None:
+async def fetch_photo(query: str, use_topics: bool = True) -> str | None:
     """Пробує Unsplash → Pexels → Pixabay. Повертає URL або None."""
-    log.info(f"🔍 Fetching photo for query: '{query}'")
+    log.info(f"🔍 Fetching photo for query: '{query}' use_topics={use_topics}")
 
     # Спроба 1: Unsplash
     for attempt in range(1, 4):
-        photo_url = await fetch_photo_unsplash(query)
+        photo_url = await fetch_photo_unsplash(query, use_topics=use_topics)
         if photo_url:
             return photo_url
         log.warning(f"⚠️ Unsplash attempt {attempt}/3 failed")
@@ -969,6 +969,23 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     ts_strong  = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
     ts_soft    = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
+    # Знаходимо найдовшу фразу для визначення висоти блоку
+    max_chars = max(
+        (len(p.get("en", "")) + len(p.get("ua", "")) for p in phrases[:5]),
+        default=100
+    )
+    # Адаптивна висота: базова 180px + додатково за довжиною
+    if max_chars <= 80:
+        block_height = 180
+    elif max_chars <= 120:
+        block_height = 210
+    elif max_chars <= 160:
+        block_height = 240
+    else:
+        block_height = 270
+
+    log.info(f"📐 Situation block height: {block_height}px (max_chars={max_chars})")
+
     topic_header = f"""
   <div style="width:100%; text-align:left; padding:0 8px; margin-bottom:4px;">
     <div style="font-size:62px; font-weight:800; color:rgba(180,210,255,0.95);
@@ -982,18 +999,21 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
         en = p.get("en", "")
         ua = p.get("ua", "")
         blocks += f"""
-  <div class="glass-block" style="min-height:210px; padding:24px 52px; display:flex;
-       flex-direction:column; justify-content:center; box-sizing:border-box;">
-    <div style="font-size:52px; font-weight:700; color:#ffffff;
-                {ts_strong} line-height:1.2; margin-bottom:12px;">
+  <div class="glass-block" style="height:{block_height}px; padding:20px 48px; display:flex;
+       flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
+    <div style="font-size:48px; font-weight:700; color:#ffffff;
+                {ts_strong} line-height:1.2; margin-bottom:10px;">
       {en}
     </div>
-    <div style="font-size:44px; font-weight:400; color:rgba(255,255,255,0.88);
+    <div style="font-size:42px; font-weight:400; color:rgba(255,255,255,0.88);
                 {ts_soft} line-height:1.2;">
       {ua}
     </div>
   </div>"""
-    return html_base(photo_b64, "Situation Phrases", blocks)
+    # Situation Phrases має менший gap між блоками
+    html = html_base(photo_b64, "Situation Phrases", blocks)
+    html = html.replace("gap: 50px;", "gap: 25px;", 1)
+    return html
 
 
 def build_quote_motivation(data: dict, photo_b64: str) -> str:
@@ -1168,7 +1188,8 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
         log.info(f"🔍 Photo query for [{rubric}]: '{photo_query}'")
 
         # 2. Завантажуємо фото
-        photo_url = await fetch_photo(photo_query)
+        use_topics = rubric != "situation_phrases"
+        photo_url = await fetch_photo(photo_query, use_topics=use_topics)
         if not photo_url:
             log.error(f"❌ No photo available for [{rubric}] — SKIPPING POST")
             return
