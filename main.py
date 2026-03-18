@@ -52,8 +52,8 @@ PIXABAY_API_KEY      = os.environ.get("PIXABAY_API_KEY", "")
 # Замініть на актуальні моделі після верифікації картки
 GEMINI_MODELS = [
     "gemini-3.1-flash-lite-preview",   # модель 1 — замініть
-    "gemini-2.5-flash-lite",                  # модель 2 — замініть
-    "gemini-2.5-flash-preview-04-17",             # модель 3 — запасна
+    "gemini-2.5-flash-preview-04-17",                  # модель 2 — замініть
+    "gemini-2.5-flash-lite",             # модель 3 — запасна
 ]
 
 # ──────────────────────────────────────────────
@@ -79,109 +79,109 @@ SITUATION_CATEGORIES = [
     {
         "name": "Airport",
         "emoji": "✈️",
-        "photo_query": "modern airport terminal interior architecture",
+        "photo_query": "airplane sky clouds sunset golden hour dusk dramatic",
         "description": "At the airport (check-in, gates, boarding, announcements)",
     },
     {
         "name": "Restaurant",
         "emoji": "🍽️",
-        "photo_query": "luxury restaurant interior warm lighting",
+        "photo_query": "outdoor cafe terrace sunset golden hour dusk dramatic",
         "description": "In a restaurant (ordering, menu, bill, complaining politely)",
     },
     {
         "name": "Hotel",
         "emoji": "🏨",
-        "photo_query": "luxury hotel lobby marble interior",
+        "photo_query": "luxury resort pool sunset tropical golden hour dusk dramatic",
         "description": "At the hotel (check-in, check-out, room service, Wi-Fi)",
     },
     {
         "name": "Shopping",
         "emoji": "🛍️",
-        "photo_query": "modern shopping mall interior luxury",
+        "photo_query": "colorful market street outdoor bokeh dusk dramatic",
         "description": "Shopping (prices, sizes, colors, returns, discounts)",
     },
     {
         "name": "Social",
         "emoji": "🤝",
-        "photo_query": "friends laughing cafe warm atmosphere",
+        "photo_query": "friends outdoor park sunset golden hour dusk dramatic",
         "description": "Social situations (meeting people, small talk, invitations)",
     },
     {
         "name": "Emergencies",
         "emoji": "🚨",
-        "photo_query": "modern hospital corridor clean",
+        "photo_query": "morning nature walk green bokeh golden hour dusk dramatic",
         "description": "Emergencies (police, ambulance, lost items, asking for help)",
     },
     {
         "name": "Weather",
         "emoji": "🌤️",
-        "photo_query": "dramatic sky clouds stormy landscape",
+        "photo_query": "dramatic storm clouds sky landscape golden hour dusk",
         "description": "Weather (forecast, seasons, likes and dislikes about weather)",
     },
     {
         "name": "Daily Life",
         "emoji": "🌅",
-        "photo_query": "city street morning golden hour",
+        "photo_query": "city street golden hour dusk dramatic bokeh",
         "description": "Daily life (morning routine, work, hobbies, weekend)",
     },
     {
         "name": "Health",
         "emoji": "🏥",
-        "photo_query": "modern medical clinic interior clean",
+        "photo_query": "nature park peaceful green morning golden hour dusk dramatic",
         "description": "Health (doctor visit, pharmacy, symptoms, healthy habits)",
     },
     {
         "name": "Technology",
         "emoji": "💻",
-        "photo_query": "modern technology workspace minimal",
+        "photo_query": "technology abstract bokeh lights dramatic dusk golden",
         "description": "Technology (smartphone, apps, Wi-Fi, online shopping)",
     },
     {
         "name": "Entertainment",
         "emoji": "🎬",
-        "photo_query": "cinema interior seats dramatic lighting",
+        "photo_query": "night city lights bokeh colorful dramatic dusk",
         "description": "Entertainment (cinema, theater, music, sports events)",
     },
     {
         "name": "Holidays",
         "emoji": "🎉",
-        "photo_query": "festive celebration lights bokeh",
+        "photo_query": "bokeh celebration lights colorful night dramatic dusk",
         "description": "Holidays (birthday, Christmas, Easter, congratulations)",
     },
     {
         "name": "Friends",
         "emoji": "👫",
-        "photo_query": "friends outdoor sunset golden hour",
+        "photo_query": "friends silhouette golden hour meadow sunset dramatic dusk",
         "description": "Friends (making plans, feelings, apologies, compliments)",
     },
     {
         "name": "Education",
         "emoji": "📚",
-        "photo_query": "modern classroom interior natural light",
+        "photo_query": "autumn park path books golden hour dusk dramatic",
         "description": "Education (homework, teacher, exams, classroom phrases)",
     },
     {
         "name": "Work",
         "emoji": "💼",
-        "photo_query": "modern office interior minimal design",
+        "photo_query": "city skyline business district dramatic golden hour dusk",
         "description": "Work (job interview, office, meetings, day off request)",
     },
     {
         "name": "Banking",
         "emoji": "🏦",
-        "photo_query": "modern bank interior architecture",
+        "photo_query": "city financial district skyline aerial dramatic golden dusk",
         "description": "Banking (account, ATM, exchange rates, transfers)",
     },
     {
         "name": "Sports",
         "emoji": "⚽",
-        "photo_query": "modern gym interior fitness equipment",
+        "photo_query": "sports field stadium aerial dramatic golden hour dusk",
         "description": "Sports (gym, playing sports, injury, competition)",
     },
     {
         "name": "Transport",
         "emoji": "🚌",
-        "photo_query": "modern train station architecture interior",
+        "photo_query": "train tracks landscape sunset dramatic golden hour dusk",
         "description": "Transport (bus, train, metro tickets, delays, directions)",
     },
 ]
@@ -982,8 +982,8 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
         en = p.get("en", "")
         ua = p.get("ua", "")
         blocks += f"""
-  <div class="glass-block" style="height:210px; padding:24px 52px; display:flex;
-       flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
+  <div class="glass-block" style="min-height:210px; padding:24px 52px; display:flex;
+       flex-direction:column; justify-content:center; box-sizing:border-box;">
     <div style="font-size:52px; font-weight:700; color:#ffffff;
                 {ts_strong} line-height:1.2; margin-bottom:12px;">
       {en}
