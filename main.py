@@ -942,7 +942,7 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     # Тема над блоками без розмиття
     topic_header = f"""
   <div style="width:100%; text-align:left; padding:0 8px; margin-bottom:4px;">
-    <div style="font-size:68px; font-weight:600; color:#c9a84c;
+    <div style="font-size:48px; font-weight:600; color:#c9a84c;
                 letter-spacing:2px; {ts} line-height:1.1;">
       {topic_name}
     </div>
