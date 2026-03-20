@@ -77,162 +77,137 @@ IMAGE_RUBRICS = {"daily_phrase", "situation_phrases", "quote_motivation"}
 # SITUATION PHRASES — 18 КАТЕГОРІЙ (РОТАЦІЯ)
 # ──────────────────────────────────────────────
 SITUATION_CATEGORIES = [
-    {
-        "name": "Airport",
-        "emoji": "✈️",
-        "photo_query": "airplane wing sky clouds dramatic dusk sunset",
-        "description": "At the airport (check-in, gates, boarding, announcements)",
-    },
-    {
-        "name": "Restaurant",
-        "emoji": "🍽️",
-        "photo_query": "restaurant terrace evening lights bokeh dusk",
-        "description": "In a restaurant (ordering, menu, bill, complaining politely)",
-    },
-    {
-        "name": "Hotel",
-        "emoji": "🏨",
-        "photo_query": "hotel pool sunset tropical evening dramatic",
-        "description": "At the hotel (check-in, check-out, room service, Wi-Fi)",
-    },
-    {
-        "name": "Shopping",
-        "emoji": "🛍️",
-        "photo_query": "shopping street evening lights bokeh dramatic dusk",
-        "description": "Shopping (prices, sizes, colors, returns, discounts)",
-    },
-    {
-        "name": "Social",
-        "emoji": "🤝",
-        "photo_query": "friends silhouette sunset park golden dramatic dusk",
-        "description": "Social situations (meeting people, small talk, invitations)",
-    },
-    {
-        "name": "Emergencies",
-        "emoji": "🚨",
-        "photo_query": "nature path green bokeh morning dramatic golden",
-        "description": "Emergencies (police, ambulance, lost items, asking for help)",
-    },
-    {
-        "name": "Weather",
-        "emoji": "🌤️",
-        "photo_query": "dramatic storm clouds sky landscape dark moody",
-        "description": "Weather (forecast, seasons, likes and dislikes about weather)",
-    },
-    {
-        "name": "Daily Life",
-        "emoji": "🌅",
-        "photo_query": "city street evening golden hour bokeh dramatic",
-        "description": "Daily life (morning routine, work, hobbies, weekend)",
-    },
-    {
-        "name": "Health",
-        "emoji": "🏥",
-        "photo_query": "green nature park morning peaceful bokeh dramatic",
-        "description": "Health (doctor visit, pharmacy, symptoms, healthy habits)",
-    },
-    {
-        "name": "Technology",
-        "emoji": "💻",
-        "photo_query": "city lights bokeh abstract night dramatic dark",
-        "description": "Technology (smartphone, apps, Wi-Fi, online shopping)",
-    },
-    {
-        "name": "Entertainment",
-        "emoji": "🎬",
-        "photo_query": "theater stage curtain dramatic night bokeh",
-        "description": "Entertainment (cinema, theater, music, sports events)",
-    },
-    {
-        "name": "Holidays",
-        "emoji": "🎉",
-        "photo_query": "celebration fireworks bokeh night colorful dramatic",
-        "description": "Holidays (birthday, Christmas, Easter, congratulations)",
-    },
-    {
-        "name": "Friends",
-        "emoji": "👫",
-        "photo_query": "friends silhouette golden hour sunset dramatic field",
-        "description": "Friends (making plans, feelings, apologies, compliments)",
-    },
-    {
-        "name": "Education",
-        "emoji": "📚",
-        "photo_query": "autumn park path golden leaves dramatic dusk sunset",
-        "description": "Education (homework, teacher, exams, classroom phrases)",
-    },
-    {
-        "name": "Work",
-        "emoji": "💼",
-        "photo_query": "city skyline evening dramatic golden dusk bokeh",
-        "description": "Work (job interview, office, meetings, day off request)",
-    },
-    {
-        "name": "Banking",
-        "emoji": "🏦",
-        "photo_query": "city financial district skyline dramatic night lights",
-        "description": "Banking (account, ATM, exchange rates, transfers)",
-    },
-    {
-        "name": "Sports",
-        "emoji": "⚽",
-        "photo_query": "sports field sunset aerial dramatic golden dusk",
-        "description": "Sports (gym, playing sports, injury, competition)",
-    },
-    {
-        "name": "Transport",
-        "emoji": "🚌",
-        "photo_query": "train tracks sunset landscape dramatic golden dusk",
-        "description": "Transport (bus, train, metro tickets, delays, directions)",
-    },
+    # Travel & Transport
+    {"name": "At the Airport", "emoji": "✈️", "photo_query": "airplane sky clouds dramatic dusk", "description": "Check-in, boarding pass, gate, security, luggage"},
+    {"name": "On the Plane", "emoji": "🛫", "photo_query": "airplane window sky clouds cinematic", "description": "Aisle seat, turbulence, flight attendant, requests on board"},
+    {"name": "Train Station", "emoji": "🚂", "photo_query": "train tracks sunset landscape dramatic golden dusk", "description": "Platform, timetable, one-way, return ticket"},
+    {"name": "Public Transport", "emoji": "🚌", "photo_query": "city street evening golden bokeh dramatic", "description": "Bus stop, fare, transfer, next stop"},
+    {"name": "Taxi & Uber", "emoji": "🚕", "photo_query": "city night lights bokeh dramatic dusk", "description": "Drop me off, take me to, estimated time, tip"},
+    {"name": "Car Rental", "emoji": "🚗", "photo_query": "open road landscape dramatic golden dusk", "description": "Insurance, fill up, mileage, deposit"},
+    {"name": "Asking for Directions", "emoji": "🗺️", "photo_query": "city street golden hour bokeh dramatic", "description": "Turn left, go straight, crossroads, landmark"},
+    {"name": "Border Control", "emoji": "🛂", "photo_query": "airport dramatic moody cinematic dusk", "description": "Passport, visa, customs, declaration"},
+    {"name": "Booking a Trip Online", "emoji": "💻", "photo_query": "travel planning dramatic golden cinematic moody", "description": "Refundable, availability, confirmation, cancel"},
+    {"name": "Travel Problems", "emoji": "⚠️", "photo_query": "airport dramatic moody dark cinematic", "description": "Delayed flight, lost luggage, compensation, claim"},
+    {"name": "Road Trip", "emoji": "🛣️", "photo_query": "open road dramatic golden sunset cinematic", "description": "Route, pit stop, gas station, scenic route"},
+    # Accommodation
+    {"name": "Hotel Check-in", "emoji": "🏨", "photo_query": "hotel exterior dramatic golden dusk cinematic", "description": "Reservation, room key, checkout time, receipt"},
+    {"name": "Hotel Problems", "emoji": "🔧", "photo_query": "hotel corridor dramatic moody cinematic", "description": "Complain, room upgrade, noisy, maintenance"},
+    {"name": "Renting an Apartment", "emoji": "🏠", "photo_query": "apartment building exterior dramatic golden dusk", "description": "Lease, deposit, landlord, utilities"},
+    # Food & Dining
+    {"name": "Making a Reservation", "emoji": "📞", "photo_query": "restaurant terrace evening lights bokeh dusk", "description": "Book a table, for two, outdoor seating, occasion"},
+    {"name": "Ordering Food", "emoji": "🍽️", "photo_query": "restaurant evening warm bokeh dramatic", "description": "I'll have, medium rare, vegan, gluten-free, allergy"},
+    {"name": "At the Cafe", "emoji": "☕", "photo_query": "cafe evening bokeh warm dramatic moody", "description": "Flat white, oat milk, to go, pastry, decaf"},
+    {"name": "The Bill & Tipping", "emoji": "💳", "photo_query": "restaurant evening golden bokeh cinematic", "description": "Split the bill, tip, service charge, receipt"},
+    {"name": "Supermarket Shopping", "emoji": "🛒", "photo_query": "market outdoor golden dramatic dusk", "description": "Aisle, best before, organic, on sale, checkout"},
+    # Work & Career
+    {"name": "Job Interview", "emoji": "💼", "photo_query": "city skyline business dramatic golden dusk", "description": "Strengths, weaknesses, experience, salary expectations"},
+    {"name": "Office Life", "emoji": "🏢", "photo_query": "city office building dramatic golden dusk", "description": "Colleagues, printer, break room, overtime"},
+    {"name": "Business Meeting", "emoji": "📊", "photo_query": "city business district dramatic golden dusk", "description": "Agenda, minutes, action points, follow up"},
+    {"name": "Remote Work", "emoji": "🖥️", "photo_query": "nature peaceful morning dramatic cinematic", "description": "Home office, video call, mute, screen share"},
+    {"name": "Asking for a Day Off", "emoji": "📅", "photo_query": "nature park morning peaceful dramatic", "description": "Annual leave, sick day, approve, cover"},
+    # Health
+    {"name": "At the Doctor", "emoji": "🏥", "photo_query": "nature green healing morning peaceful dramatic", "description": "Symptoms, diagnosis, prescription, appointment"},
+    {"name": "At the Pharmacy", "emoji": "💊", "photo_query": "green nature bokeh peaceful cinematic moody", "description": "Prescription, dosage, side effects, over the counter"},
+    {"name": "Describing Symptoms", "emoji": "🤒", "photo_query": "nature peaceful green morning cinematic", "description": "Sore throat, headache, fever, dizzy"},
+    {"name": "Emergency Services", "emoji": "🚨", "photo_query": "city night dramatic moody dark cinematic", "description": "Call 999/112, ambulance, fire brigade, police"},
+    # Shopping
+    {"name": "Clothes Shopping", "emoji": "👗", "photo_query": "shopping street evening golden bokeh dramatic", "description": "Size, fitting room, try on, exchange, refund"},
+    {"name": "Returns & Refunds", "emoji": "🔄", "photo_query": "city street evening dramatic golden dusk", "description": "Receipt, exchange, faulty, guarantee"},
+    {"name": "At the Market", "emoji": "🛍️", "photo_query": "outdoor market golden dramatic dusk cinematic", "description": "Fresh produce, bargain, vendor, cash only"},
+    # Social
+    {"name": "Meeting Someone New", "emoji": "🤝", "photo_query": "friends outdoor golden hour dramatic dusk", "description": "Nice to meet you, what do you do, where are you from"},
+    {"name": "Small Talk", "emoji": "💬", "photo_query": "park golden hour dramatic bokeh cinematic", "description": "Weather, weekend plans, local area, how was your day"},
+    {"name": "Making Plans", "emoji": "📆", "photo_query": "city park golden dramatic dusk bokeh", "description": "Are you free, shall we, how about, let's meet at"},
+    {"name": "Invitations", "emoji": "🎉", "photo_query": "celebration bokeh night dramatic colorful", "description": "You're invited, I'd love to come, unfortunately I can't"},
+    {"name": "Apologies", "emoji": "🙏", "photo_query": "peaceful nature morning dramatic cinematic", "description": "I'm so sorry, my mistake, I didn't mean to"},
+    # Education
+    {"name": "In the Classroom", "emoji": "📚", "photo_query": "autumn park golden dramatic dusk cinematic", "description": "Could you repeat, I don't understand, homework, exam"},
+    {"name": "Talking to a Teacher", "emoji": "🎓", "photo_query": "autumn leaves golden dramatic moody cinematic", "description": "Could you explain, I need help with, deadline, grade"},
+    {"name": "Study Abroad", "emoji": "🌍", "photo_query": "autumn park path golden dramatic dusk", "description": "Enrol, campus, lecture, assignment, student visa"},
+    # Nature
+    {"name": "Talking About Weather", "emoji": "🌤️", "photo_query": "dramatic sky clouds landscape dark moody", "description": "Forecast, temperature, humid, sunny spells, showers"},
+    {"name": "Outdoor Activities", "emoji": "🏔️", "photo_query": "mountain forest dramatic moody cinematic", "description": "Hiking trail, picnic, campfire, wildlife, scenic view"},
+    # Personal
+    {"name": "Describing Yourself", "emoji": "😊", "photo_query": "nature peaceful morning dramatic cinematic moody", "description": "Personality, hobbies, background, hometown"},
+    {"name": "Talking About Family", "emoji": "👨‍👩‍👧", "photo_query": "nature golden bokeh dramatic dusk cinematic", "description": "Siblings, extended family, childhood, upbringing"},
+    # Finance
+    {"name": "At the Bank", "emoji": "🏦", "photo_query": "city financial district dramatic golden dusk", "description": "Open account, transfer, exchange rate, ATM"},
+    {"name": "Paying & Splitting Bills", "emoji": "💰", "photo_query": "city street evening dramatic golden bokeh", "description": "Split, go Dutch, contactless, cash back"},
+    # Digital
+    {"name": "Online Shopping", "emoji": "🛒", "photo_query": "technology bokeh abstract night dramatic", "description": "Add to cart, checkout, track order, return policy"},
+    {"name": "Tech Problems", "emoji": "💻", "photo_query": "city night lights bokeh abstract dramatic", "description": "Frozen screen, update, reboot, password reset"},
+    # Character
+    {"name": "Expressing Feelings", "emoji": "💭", "photo_query": "nature peaceful moody dramatic cinematic", "description": "I feel overwhelmed, I'm excited, I'm a bit nervous"},
+    {"name": "Giving Compliments", "emoji": "⭐", "photo_query": "golden hour nature bokeh dramatic cinematic", "description": "That looks great on you, well done, I'm impressed"},
 ]
+
+# ──────────────────────────────────────────────
+# DAILY PHRASE TOPICS — ротація тем з атласу
+# ──────────────────────────────────────────────
+DAILY_PHRASE_TOPICS = [
+    {"name": "Travel Vocabulary", "desc": "General travel words and phrases for any journey"},
+    {"name": "Airport Vocabulary", "desc": "Words related to flying, check-in, boarding"},
+    {"name": "Hotel Vocabulary", "desc": "Useful words for hotel stays and accommodation"},
+    {"name": "Food Vocabulary", "desc": "Names of foods, dishes, cooking methods, flavours"},
+    {"name": "Cafe Phrases", "desc": "Common phrases for ordering coffee and snacks"},
+    {"name": "Restaurant Phrases", "desc": "Useful expressions for dining out"},
+    {"name": "Food Idioms", "desc": "Popular English idioms related to food: piece of cake, spill the beans"},
+    {"name": "Food Trends", "desc": "Modern vocabulary: plant-based, keto, meal prep"},
+    {"name": "Work Vocabulary", "desc": "General workplace words and expressions"},
+    {"name": "Business English", "desc": "Professional phrases for meetings and emails"},
+    {"name": "Job Interview Phrases", "desc": "Common expressions for job interviews"},
+    {"name": "Health Vocabulary", "desc": "Words for describing health, symptoms, wellbeing"},
+    {"name": "Wellbeing & Self-care", "desc": "Phrases about mental health, relaxation, balance"},
+    {"name": "Shopping Vocabulary", "desc": "Useful words and phrases for shopping"},
+    {"name": "Small Talk Phrases", "desc": "Casual conversation starters and social expressions"},
+    {"name": "Polite Requests", "desc": "How to ask for things politely in English"},
+    {"name": "Expressing Opinions", "desc": "Phrases for agreeing, disagreeing, giving views"},
+    {"name": "Complimenting People", "desc": "How to give and receive compliments in English"},
+    {"name": "Apologising", "desc": "Different ways to say sorry and make amends"},
+    {"name": "Study Skills Vocabulary", "desc": "Words for learning, studying, taking notes"},
+    {"name": "Classroom Language", "desc": "Phrases teachers and students use every day"},
+    {"name": "Nature Vocabulary", "desc": "Words for describing the natural world"},
+    {"name": "Weather Expressions", "desc": "Phrases for talking about weather and seasons"},
+    {"name": "Seasons & Time", "desc": "Vocabulary for time of year, months, seasons"},
+    {"name": "Positive Personality Traits", "desc": "Words like generous, patient, honest, supportive"},
+    {"name": "Negative Traits", "desc": "Words like stubborn, jealous, bossy, unreliable"},
+    {"name": "Body Language", "desc": "Phrases for describing gestures and non-verbal communication"},
+    {"name": "Expressing Emotions", "desc": "How to describe feelings and emotional states"},
+    {"name": "Growth Mindset", "desc": "Motivational vocabulary: resilience, comfort zone, discipline"},
+    {"name": "Habits & Routines", "desc": "Phrases for daily routines, consistency, productivity"},
+    {"name": "Ambitions & Goals", "desc": "Talking about dreams, plans and aspirations"},
+    {"name": "Home Vocabulary", "desc": "Words for rooms, furniture, household items"},
+    {"name": "Housework Phrases", "desc": "Vocabulary for cleaning, cooking, daily chores"},
+    {"name": "Money Vocabulary", "desc": "Basic financial words: budget, savings, expenses"},
+    {"name": "Banking Phrases", "desc": "Useful expressions for banking and transactions"},
+    {"name": "Technology Vocabulary", "desc": "Modern tech words: update, cloud, backup, bluetooth"},
+    {"name": "Social Media Language", "desc": "Words for posting, sharing, commenting online"},
+    {"name": "Online Communication", "desc": "Phrases for emails, messages, video calls"},
+    {"name": "Transport Vocabulary", "desc": "Words for different types of transport and travel"},
+    {"name": "Driving Vocabulary", "desc": "Phrases for driving, directions, road signs"},
+    {"name": "British vs American English", "desc": "Key vocabulary differences between UK and US"},
+    {"name": "Common Idioms", "desc": "Popular English idioms and their meanings"},
+    {"name": "Phrasal Verbs", "desc": "Common phrasal verbs used in everyday English"},
+    {"name": "Slang & Informal English", "desc": "Modern casual English expressions"},
+    {"name": "Sports Vocabulary", "desc": "Words and phrases related to popular sports"},
+    {"name": "Music & Arts", "desc": "Vocabulary for talking about music, art, film"},
+    {"name": "Books & Reading", "desc": "Phrases for discussing books and literature"},
+    {"name": "Humor & Jokes", "desc": "Light-hearted phrases and expressions for fun"},
+]
+
 
 # ──────────────────────────────────────────────
 # СВЯТА
 # ──────────────────────────────────────────────
 HOLIDAYS = {
-    (2, 14): {
-        "name": "Valentine's Day",
-        "emoji": "💝",
-        "photo_query": "valentines day hearts romantic",
-        "situation_name": "Valentine's Day",
-        "situation_description": "Valentine's Day phrases (romantic, love, gifts, dates)",
-    },
-    (3, 8): {
-        "name": "Women's Day",
-        "emoji": "🌸",
-        "photo_query": "spring flowers women day",
-        "situation_name": "Women's Day",
-        "situation_description": "Women's Day phrases (congratulations, flowers, appreciation)",
-    },
-    (4, 20): {
-        "name": "Easter",
-        "emoji": "🐣",
-        "photo_query": "easter spring bunnies flowers",
-        "situation_name": "Easter",
-        "situation_description": "Easter phrases (greetings, traditions, celebration)",
-    },
-    (10, 31): {
-        "name": "Halloween",
-        "emoji": "🎃",
-        "photo_query": "halloween pumpkin spooky night",
-        "situation_name": "Halloween",
-        "situation_description": "Halloween phrases (costumes, trick or treat, spooky fun)",
-    },
-    (12, 25): {
-        "name": "Christmas",
-        "emoji": "🎄",
-        "photo_query": "christmas tree gifts snow",
-        "situation_name": "Christmas",
-        "situation_description": "Christmas phrases (greetings, gifts, family, traditions)",
-    },
-    (1, 1): {
-        "name": "New Year",
-        "emoji": "🎆",
-        "photo_query": "new year fireworks celebration",
-        "situation_name": "New Year",
-        "situation_description": "New Year phrases (wishes, resolutions, celebration)",
-    },
+    (1, 1):   {"name": "New Year", "emoji": "🎆", "photo_query": "fireworks night celebration dramatic colorful", "situation_name": "New Year", "situation_description": "New Year wishes, resolutions, countdown phrases"},
+    (2, 14):  {"name": "Valentine's Day", "emoji": "💝", "photo_query": "valentines day hearts romantic bokeh dramatic", "situation_name": "Valentine's Day", "situation_description": "Romantic phrases, love expressions, Valentine's Day"},
+    (3, 8):   {"name": "Women's Day", "emoji": "🌸", "photo_query": "spring flowers bokeh golden dramatic", "situation_name": "Women's Day", "situation_description": "Appreciation phrases, congratulations, Women's Day"},
+    (4, 1):   {"name": "April Fool's Day", "emoji": "🃏", "photo_query": "playful colorful bokeh dramatic fun cinematic", "situation_name": "April Fool's Day", "situation_description": "Jokes, pranks, funny expressions in English"},
+    (4, 22):  {"name": "Earth Day", "emoji": "🌍", "photo_query": "nature green dramatic moody forest cinematic", "situation_name": "Earth Day", "situation_description": "Environment phrases, recycling, saving the planet"},
+    (10, 31): {"name": "Halloween", "emoji": "🎃", "photo_query": "halloween pumpkin moody dramatic night", "situation_name": "Halloween", "situation_description": "Halloween phrases, costumes, trick or treat"},
+    (12, 25): {"name": "Christmas", "emoji": "🎄", "photo_query": "christmas lights bokeh night dramatic snow", "situation_name": "Christmas", "situation_description": "Christmas greetings, gift phrases, festive expressions"},
+    (12, 31): {"name": "New Year's Eve", "emoji": "🥂", "photo_query": "fireworks celebration night dramatic colorful", "situation_name": "New Year's Eve", "situation_description": "Countdown phrases, toasts, New Year wishes"},
 }
 
 # ──────────────────────────────────────────────
@@ -325,6 +300,27 @@ def get_photo_query_for_situation(category: dict) -> str:
 
 def get_photo_query_for_quote() -> str:
     return random.choice(QUOTE_PHOTOS)
+
+
+async def get_daily_phrase_topic(history_mgr) -> dict:
+    """Вибирає випадкову тему з атласу, уникаючи повторів."""
+    try:
+        used_raw = await history_mgr.r.lrange("used:daily_phrase_topics", 0, -1)
+        used_set = set(used_raw) if used_raw else set()
+        available = [t for t in DAILY_PHRASE_TOPICS if t["name"] not in used_set]
+        if not available:
+            # Всі теми використані — скидаємо
+            log.info("🔄 Daily phrase topics exhausted — resetting")
+            await history_mgr.r.delete("used:daily_phrase_topics")
+            available = DAILY_PHRASE_TOPICS
+        topic = random.choice(available)
+        await history_mgr.r.lpush("used:daily_phrase_topics", topic["name"])
+        await history_mgr.r.ltrim("used:daily_phrase_topics", 0, len(DAILY_PHRASE_TOPICS) - 1)
+        log.info(f"📖 Daily phrase topic: {topic['name']}")
+        return topic
+    except Exception as e:
+        log.error(f"❌ get_daily_phrase_topic error: {e} — using random")
+        return random.choice(DAILY_PHRASE_TOPICS)
 
 # ──────────────────────────────────────────────
 # UPSTASH REDIS
@@ -635,21 +631,23 @@ def get_prompt(rubric: str, used_history: list, extra: dict = None) -> str:
     extra = extra or {}
 
     if rubric == "daily_phrase":
-        return f"""You are an English teacher. Generate a useful conversational English phrase for A2 level students.
-{history_note}
+        topic_name = extra.get("topic_name", "")
+        topic_desc = extra.get("topic_desc", "")
+        topic_line = f"Topic: {topic_name} — {topic_desc}\n" if topic_name else ""
+        return f"""You are an English teacher. Generate a useful English phrase for A2 level students.
+{topic_line}{history_note}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
-  "phrase_en": "the English phrase (minimum 5 words, max 80 characters)",
-  "example_en": "one example sentence using the phrase in context (max 140 characters)",
+  "phrase_en": "the English phrase related to the topic (minimum 5 words, max 80 characters)",
+  "example_en": "one natural example sentence using the phrase in context (max 140 characters)",
   "example_ua": "Ukrainian translation of the example sentence (max 140 characters)",
-  "photo_query": "3-5 keywords for stock photo search: emotion + scene + style (minimal aesthetic cinematic soft light)"
+  "photo_query": "3-5 keywords for stock photo: scene + mood + style (cinematic dramatic moody soft light)"
 }}
 Rules:
-- Minimum 5 words in the phrase — avoid very short phrases like "See you" or "Thank you"
+- Phrase must relate to the given topic
+- Minimum 5 words — avoid very short phrases like "See you" or "Thank you"
 - Simple A2 vocabulary, natural everyday conversation
-- Example sentence must use the phrase naturally in context
-- photo_query: extract emotion and visual scene from the phrase, add: minimal aesthetic cinematic soft light
-- photo_query examples: "sunrise road hope minimal cinematic", "coffee morning cozy soft light aesthetic"
+- photo_query: visual scene related to the topic, add: cinematic dramatic soft light
 {LANGUAGE_CENSOR}"""
 
     if rubric == "situation_phrases":
@@ -966,8 +964,8 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     html = html_base(photo_b64, blocks)
     html = html.replace("gap: 44px;", "gap: 20px;", 1)
 
-    # Бренд в самому низу з blur
-    bottom = '''<div class="bottom-bar" style="text-align:right;">
+    # Бренд внизу з blur
+    bottom = '''<div class="bottom-bar" style="text-align:right; background:transparent; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);">
       <span class="brand">Improve Your <span class="eng">English</span></span>
     </div>'''
     html = html.replace("</body>", bottom + "</body>")
@@ -985,7 +983,7 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
        flex-direction:column; justify-content:flex-start; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:28px; font-weight:600; letter-spacing:3px; color:#c9a84c;
                 text-transform:uppercase; margin-bottom:28px; {ts}">
-      Daily Motivation
+      Motivation
     </div>
     <div style="font-size:clamp(46px,5vw,64px); font-weight:700; color:#ffffff;
                 {ts} line-height:1.3; flex:1; display:flex; align-items:center;">
@@ -1120,6 +1118,8 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
 
         if rubric == "daily_phrase":
             photo_query = get_photo_query_for_daily_phrase()
+            daily_topic = await get_daily_phrase_topic(history_mgr)
+            extra = {"topic_name": daily_topic["name"], "topic_desc": daily_topic["desc"]}
 
         elif rubric == "situation_phrases":
             holiday = get_today_holiday()
