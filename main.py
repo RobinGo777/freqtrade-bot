@@ -872,7 +872,7 @@ body {{ width: 1080px; height: 1920px; overflow: hidden; font-family: 'Montserra
   z-index: 1; }}
 .content {{ position: absolute; top: 0; left: 0; width: 1080px; height: 1920px;
   display: flex; flex-direction: column; justify-content: center; align-items: center;
-  padding: 80px 64px 180px 64px; gap: 44px; z-index: 5; }}
+  padding: 80px 64px 200px 64px; gap: 44px; z-index: 5; }}
 .glass-block {{ width: 100%; background: rgba(12, 12, 18, 0.58);
   backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
   border-radius: 32px; padding: 52px 60px;
@@ -882,9 +882,9 @@ body {{ width: 1080px; height: 1920px; overflow: hidden; font-family: 'Montserra
 .brand .eng {{ color: #c9a84c; }}
 .gold-line {{ width: 120px; height: 2px;
   background: linear-gradient(90deg, transparent, #c9a84c, transparent); margin: 24px 0; }}
-.bottom-brand {{ position: absolute; bottom: 0; left: 0; right: 0; z-index: 6;
-  padding: 40px 70px; text-align: right;
-  background: rgba(0,0,0,0); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }}
+.bottom-bar {{ position: absolute; bottom: 0; left: 0; right: 0; z-index: 6;
+  padding: 36px 70px 44px 70px;
+  background: rgba(0,0,0,0.35); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }}
 </style>
 </head>
 <body>
@@ -903,7 +903,7 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
     ts2 = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
     blocks = f"""
-  <div class="glass-block" style="height:350px; padding:48px 60px; display:flex;
+  <div class="glass-block" style="height:380px; padding:48px 60px; display:flex;
        flex-direction:column; justify-content:flex-start; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:28px; font-weight:600; letter-spacing:3px; color:#c9a84c;
                 text-transform:uppercase; margin-bottom:28px; {ts}">
@@ -914,7 +914,7 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
       {phrase}
     </div>
   </div>
-  <div class="glass-block" style="height:520px; padding:48px 60px; display:flex;
+  <div class="glass-block" style="height:550px; padding:48px 60px; display:flex;
        flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:clamp(42px,4.5vw,58px); font-weight:600; color:#ffffff;
                 {ts} line-height:1.3; margin-bottom:4px;">
@@ -929,7 +929,6 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
       <span class="brand">Improve Your <span class="eng">English</span></span>
     </div>
   </div>"""
-
     return html_base(photo_b64, blocks)
 
 
@@ -939,22 +938,10 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     ts  = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
     ts2 = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
-    # Фіксовані великі блоки — 2 рядки EN + 2 рядки UA
     block_height, font_en, font_ua = 280, 50, 44
-    log.info(f"📐 Situation: fixed height={block_height}px font={font_en}/{font_ua}px")
+    log.info(f"📐 Situation: fixed height={block_height}px")
 
-    # Заголовок теми з blur під ним
-    topic_header = f"""
-  <div style="width:100%; text-align:left; padding:12px 16px; margin-bottom:4px;
-              background:rgba(0,0,0,0.45); backdrop-filter:blur(16px);
-              -webkit-backdrop-filter:blur(16px); border-radius:16px; box-sizing:border-box;">
-    <div style="font-size:68px; font-weight:600; color:#c9a84c;
-                letter-spacing:2px; {ts} line-height:1.1;">
-      {topic_name}
-    </div>
-  </div>"""
-
-    blocks = topic_header
+    blocks = ""
     for p in phrases[:5]:
         en = p.get("en", "")
         ua = p.get("ua", "")
@@ -970,11 +957,14 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     html = html_base(photo_b64, blocks)
     html = html.replace("gap: 44px;", "gap: 20px;", 1)
 
-    # Бренд в самому низу з blur
-    brand_html = '''<div class="bottom-brand">
+    # Bottom bar: тема зліва + бренд справа з blur
+    bottom = f'''<div class="bottom-bar" style="display:flex; justify-content:space-between; align-items:center;">
+      <div style="font-size:60px; font-weight:600; color:#c9a84c; letter-spacing:2px; {ts}">
+        {topic_name}
+      </div>
       <span class="brand">Improve Your <span class="eng">English</span></span>
     </div>'''
-    html = html.replace("</body>", brand_html + "</body>")
+    html = html.replace("</body>", bottom + "</body>")
     return html
 
 
@@ -985,7 +975,7 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
     ts2 = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
     blocks = f"""
-  <div class="glass-block" style="height:500px; padding:48px 60px; display:flex;
+  <div class="glass-block" style="height:520px; padding:48px 60px; display:flex;
        flex-direction:column; justify-content:flex-start; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:28px; font-weight:600; letter-spacing:3px; color:#c9a84c;
                 text-transform:uppercase; margin-bottom:28px; {ts}">
@@ -997,7 +987,7 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
     </div>
     <div class="gold-line" style="margin:20px 0 0 0;"></div>
   </div>
-  <div class="glass-block" style="height:500px; padding:48px 60px; display:flex;
+  <div class="glass-block" style="height:520px; padding:48px 60px; display:flex;
        flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
     <div style="font-size:clamp(46px,5vw,64px); font-weight:300; color:rgba(245,245,247,0.88);
                 {ts2} line-height:1.3; flex:1; display:flex; align-items:center;">
