@@ -151,6 +151,61 @@ SITUATION_CATEGORIES = [
     {"name": "Giving Compliments", "emoji": "⭐", "photo_query": "golden hour nature bokeh", "description": "That looks great on you, well done, I'm impressed"},
 ]
 
+ATLAS_TOPIC_NAMES = [
+    "At the Airport", "On the Plane", "Train Station", "Public Transport", "Taxi & Uber",
+    "Car Rental", "Asking for Directions", "Border Control", "Booking a Trip Online",
+    "Travel Problems", "Road Trip", "Hotel Check-in/out", "Hotel Problems",
+    "Renting an Apartment", "Housework", "Home Appliances", "Describing Your Home",
+    "Neighbours & Community", "Making a Reservation", "Ordering Food", "At the Cafe",
+    "The Bill & Tipping", "Cooking & Recipes", "Supermarket Shopping", "Food Vocabulary",
+    "Food Trends", "Food Idioms", "Job Interview", "Office Life", "Meetings",
+    "Emails & Calls", "Sick Leave", "Freelance & Remote Work", "CV & Cover Letter",
+    "Networking", "Work Phrasal Verbs", "At the Doctor", "At the Pharmacy",
+    "Healthy Lifestyle", "Mental Health", "At the Dentist", "Body Parts & Injuries",
+    "Gym & Fitness", "Health Idioms", "Clothes Shopping", "Beauty Salon",
+    "Banking & Money", "At the Post Office", "Electronics & Tech", "Online Shopping",
+    "Bargaining & Sales", "Small Talk", "Hobbies", "Cinema & Theatre",
+    "Parties & Invitations", "Compliments", "Apologies & Conflicts", "Sports & Games",
+    "Music & Concerts", "Books & Reading", "Language Learning", "In the Classroom",
+    "Exams & Tests", "University Life", "IELTS & Cambridge", "Online Learning",
+    "Study Tips & Strategies", "Weather Forecast", "Animals & Pets", "Environment",
+    "City vs Countryside", "Natural Disasters", "Seasons & Nature Walks", "Appearance",
+    "Character", "Family", "Feelings", "Dating", "Friendship",
+    "Cultural Differences", "Leaking Tap", "Power Cut", "Locksmith",
+    "Furniture Assembly", "Interior Design", "Moving House", "Budgeting", "Taxes",
+    "Investment", "Scams & Safety", "Insurance", "Renting vs Buying", "Social Media",
+    "Online Dating", "Cyberbullying", "Artificial Intelligence", "Streaming Services",
+    "Tech Vocabulary", "Podcasts & YouTube", "Digital Etiquette", "Positive Traits",
+    "Negative Traits", "Body Language", "Expressing Anger", "Ambitions",
+    "Growth Mindset", "Habits & Routines", "Inspirational Quotes",
+]
+
+
+def _slug_to_description(name: str) -> str:
+    return f"Useful A2 phrases and real-life mini-dialogues for topic: {name}"
+
+
+def _sync_situation_categories_with_atlas(existing: list[dict], atlas_names: list[str]) -> list[dict]:
+    # Зберігаємо наявні категорії (з їх photo_query/emoji/description), але доводимо список до 1:1 з atlas.
+    by_name = {str(item.get("name", "")).strip(): item for item in existing if item.get("name")}
+    merged = []
+    for name in atlas_names:
+        if name in by_name:
+            merged.append(by_name[name])
+            continue
+        merged.append(
+            {
+                "name": name,
+                "emoji": "🧩",
+                "photo_query": "cinematic realistic scene soft light",
+                "description": _slug_to_description(name),
+            }
+        )
+    return merged
+
+
+SITUATION_CATEGORIES = _sync_situation_categories_with_atlas(SITUATION_CATEGORIES, ATLAS_TOPIC_NAMES)
+
 # ──────────────────────────────────────────────
 # DAILY PHRASE TOPICS — ротація тем з атласу
 # ──────────────────────────────────────────────
@@ -205,6 +260,102 @@ DAILY_PHRASE_TOPICS = [
     {"name": "Humor & Jokes", "desc": "Light-hearted phrases and expressions for fun"},
 ]
 
+ATLAS_SYNC_TOPICS = [
+    {"name": "Hotel Check-in/out", "desc": "Check-in and check-out flow, reception communication"},
+    {"name": "Housework", "desc": "Cleaning, laundry, chores and home routine phrases"},
+    {"name": "Home Appliances", "desc": "Vocabulary for household devices and maintenance"},
+    {"name": "Describing Your Home", "desc": "Describe rooms, furniture, layout, and comfort"},
+    {"name": "Neighbours & Community", "desc": "Neighborhood communication and community life"},
+    {"name": "Cooking & Recipes", "desc": "Ingredients, cooking actions, and recipe language"},
+    {"name": "Meetings", "desc": "Meeting structure, agenda, and participation language"},
+    {"name": "Emails & Calls", "desc": "Formal and semi-formal communication for work"},
+    {"name": "Sick Leave", "desc": "Requesting leave, reporting illness, and updates"},
+    {"name": "Freelance & Remote Work", "desc": "Remote routines, clients, and deadlines"},
+    {"name": "CV & Cover Letter", "desc": "Job application documents and key phrases"},
+    {"name": "Networking", "desc": "Professional introductions and relationship building"},
+    {"name": "Work Phrasal Verbs", "desc": "High-frequency phrasal verbs in work context"},
+    {"name": "Healthy Lifestyle", "desc": "Wellness, habits, sleep, movement, and nutrition"},
+    {"name": "Mental Health", "desc": "Stress, emotions, recovery, and self-support language"},
+    {"name": "At the Dentist", "desc": "Dental appointments, symptoms, and treatment"},
+    {"name": "Body Parts & Injuries", "desc": "Body vocabulary, pain description, and injuries"},
+    {"name": "Gym & Fitness", "desc": "Workout language, routines, and fitness goals"},
+    {"name": "Health Idioms", "desc": "Common idioms used in health and wellness context"},
+    {"name": "Beauty Salon", "desc": "Hair, beauty services, and appointment phrases"},
+    {"name": "Banking & Money", "desc": "Bank operations, cards, transfers, and statements"},
+    {"name": "At the Post Office", "desc": "Parcels, delivery, tracking, and postal services"},
+    {"name": "Electronics & Tech", "desc": "Devices, specs, setup, and troubleshooting basics"},
+    {"name": "Bargaining & Sales", "desc": "Discounts, offers, negotiation, and price talk"},
+    {"name": "Hobbies", "desc": "Interests, leisure activities, and preference language"},
+    {"name": "Cinema & Theatre", "desc": "Movies, seats, showtimes, and review language"},
+    {"name": "Parties & Invitations", "desc": "Inviting, accepting, declining, and planning events"},
+    {"name": "Compliments", "desc": "Polite praise and positive feedback in conversation"},
+    {"name": "Apologies & Conflicts", "desc": "Apologizing, clarifying, and resolving tension"},
+    {"name": "Sports & Games", "desc": "Sports vocabulary, rules, and match discussion"},
+    {"name": "Music & Concerts", "desc": "Genres, performances, and live event language"},
+    {"name": "Language Learning", "desc": "Learning methods, progress, and language goals"},
+    {"name": "Exams & Tests", "desc": "Preparation, test-taking, and results language"},
+    {"name": "University Life", "desc": "Campus, classes, assignments, and student life"},
+    {"name": "IELTS & Cambridge", "desc": "Exam prep vocabulary and task-specific phrases"},
+    {"name": "Online Learning", "desc": "Platforms, self-study flow, and course language"},
+    {"name": "Study Tips & Strategies", "desc": "Memory methods, planning, and discipline"},
+    {"name": "Weather Forecast", "desc": "Forecast terms and seasonal weather descriptions"},
+    {"name": "Animals & Pets", "desc": "Pet care, behavior, and vet communication"},
+    {"name": "Environment", "desc": "Sustainability, ecology, and climate language"},
+    {"name": "City vs Countryside", "desc": "Compare urban and rural lifestyles"},
+    {"name": "Natural Disasters", "desc": "Emergency and disaster-related vocabulary"},
+    {"name": "Seasons & Nature Walks", "desc": "Nature descriptions and seasonal observation"},
+    {"name": "Appearance", "desc": "Looks, style, and physical description language"},
+    {"name": "Character", "desc": "Personality traits and behavior descriptions"},
+    {"name": "Family", "desc": "Family roles, relationships, and traditions"},
+    {"name": "Feelings", "desc": "Emotion vocabulary and self-expression"},
+    {"name": "Dating", "desc": "Social-romantic communication and etiquette"},
+    {"name": "Friendship", "desc": "Supportive communication in friendships"},
+    {"name": "Cultural Differences", "desc": "Cross-cultural communication and etiquette"},
+    {"name": "Leaking Tap", "desc": "Home repair and plumber communication"},
+    {"name": "Power Cut", "desc": "Power outage vocabulary and problem reporting"},
+    {"name": "Locksmith", "desc": "Lost keys, lock issues, and urgent requests"},
+    {"name": "Furniture Assembly", "desc": "Assembly instructions and household setup"},
+    {"name": "Interior Design", "desc": "Home style, furniture, and color descriptions"},
+    {"name": "Moving House", "desc": "Packing, moving logistics, and settling in"},
+    {"name": "Budgeting", "desc": "Budget planning, expenses, and saving habits"},
+    {"name": "Taxes", "desc": "Basic tax-related terms and official communication"},
+    {"name": "Investment", "desc": "Basic investing vocabulary and risk discussion"},
+    {"name": "Scams & Safety", "desc": "Fraud prevention and digital safety language"},
+    {"name": "Insurance", "desc": "Policies, claims, and coverage communication"},
+    {"name": "Renting vs Buying", "desc": "Housing choice discussion and finance terms"},
+    {"name": "Social Media", "desc": "Posting, engagement, and online interactions"},
+    {"name": "Online Dating", "desc": "Profiles, messaging, and boundaries online"},
+    {"name": "Cyberbullying", "desc": "Online safety, reporting, and supportive responses"},
+    {"name": "Artificial Intelligence", "desc": "AI tools, prompts, and practical usage terms"},
+    {"name": "Streaming Services", "desc": "Subscriptions, content, and viewing habits"},
+    {"name": "Tech Vocabulary", "desc": "Core modern digital and software terminology"},
+    {"name": "Podcasts & YouTube", "desc": "Listening and video-learning related language"},
+    {"name": "Digital Etiquette", "desc": "Polite online behavior and communication norms"},
+    {"name": "Positive Traits", "desc": "Describing strengths and positive character features"},
+    {"name": "Expressing Anger", "desc": "Assertive language for frustration and boundaries"},
+    {"name": "Ambitions", "desc": "Long-term goals and motivational communication"},
+    {"name": "Inspirational Quotes", "desc": "Quote language, interpretation, and reflection"},
+]
+
+
+def _merge_topics_unique(base: list, extra: list) -> list:
+    seen = set()
+    merged = []
+    for item in base + extra:
+        name = str(item.get("name", "")).strip()
+        if not name:
+            continue
+        key = name.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        merged.append(item)
+    return merged
+
+
+# Автосинхронізація з atlas: розширюємо покриття тем без дублювань.
+DAILY_PHRASE_TOPICS = _merge_topics_unique(DAILY_PHRASE_TOPICS, ATLAS_SYNC_TOPICS)
+
 
 # ──────────────────────────────────────────────
 # СВЯТА
@@ -214,8 +365,15 @@ HOLIDAYS = {
     (2, 14):  {"name": "Valentine's Day", "emoji": "💝", "photo_query": "valentines day hearts romantic bokeh", "situation_name": "Valentine's Day", "situation_description": "Romantic phrases, love expressions, Valentine's Day"},
     (3, 8):   {"name": "Women's Day", "emoji": "🌸", "photo_query": "spring flowers bokeh", "situation_name": "Women's Day", "situation_description": "Appreciation phrases, congratulations, Women's Day"},
     (4, 1):   {"name": "April Fool's Day", "emoji": "🃏", "photo_query": "playful colorful bokeh fun cinematic", "situation_name": "April Fool's Day", "situation_description": "Jokes, pranks, funny expressions in English"},
+    (4, 20):  {"name": "Easter", "emoji": "🐣", "photo_query": "easter spring nature soft light", "situation_name": "Easter", "situation_description": "Easter traditions, greetings, family celebration"},
     (4, 22):  {"name": "Earth Day", "emoji": "🌍", "photo_query": "nature green forest cinematic", "situation_name": "Earth Day", "situation_description": "Environment phrases, recycling, saving the planet"},
+    (5, 12):  {"name": "Mother's Day", "emoji": "💐", "photo_query": "flowers spring warm natural light", "situation_name": "Mother's Day", "situation_description": "Family gratitude, appreciation, kind wishes for mothers"},
+    (6, 15):  {"name": "Father's Day", "emoji": "👔", "photo_query": "family outdoors warm natural light", "situation_name": "Father's Day", "situation_description": "Respect, gratitude, and wishes for fathers"},
+    (6, 21):  {"name": "International Yoga Day", "emoji": "🧘", "photo_query": "calm green nature mindfulness", "situation_name": "International Yoga Day", "situation_description": "Mindfulness, wellness, and healthy routine phrases"},
+    (7, 31):  {"name": "International Friendship Day", "emoji": "🤝", "photo_query": "friends outdoors soft golden light", "situation_name": "International Friendship Day", "situation_description": "Friendship, support, and appreciation phrases"},
+    (9, 1):   {"name": "Back to School", "emoji": "🎒", "photo_query": "school campus autumn soft light", "situation_name": "Back to School", "situation_description": "Study motivation, classroom language, and school routines"},
     (10, 31): {"name": "Halloween", "emoji": "🎃", "photo_query": "halloween pumpkin night", "situation_name": "Halloween", "situation_description": "Halloween phrases, costumes, trick or treat"},
+    (11, 28): {"name": "Thanksgiving", "emoji": "🦃", "photo_query": "cozy dinner table autumn warm light", "situation_name": "Thanksgiving", "situation_description": "Gratitude, family dinner, and thankful expressions"},
     (12, 25): {"name": "Christmas", "emoji": "🎄", "photo_query": "christmas lights bokeh night snow", "situation_name": "Christmas", "situation_description": "Christmas greetings, gift phrases, festive expressions"},
     (12, 31): {"name": "New Year's Eve", "emoji": "🥂", "photo_query": "fireworks celebration night colorful", "situation_name": "New Year's Eve", "situation_description": "Countdown phrases, toasts, New Year wishes"},
 }
@@ -254,20 +412,78 @@ ATMOSPHERE_PHOTOS = [
     "architectural minimal concrete geometry",
 ]
 
-DAILY_PHRASE_STYLE_PHOTOS = [
-    "minimal cozy interior warm sunlight",
-    "soft morning light wall shadow minimal",
-    "beige aesthetic room calm atmosphere",
-    "coffee table warm light minimal",
-    "clean living room neutral tones cinematic",
-    "warm window light cozy interior",
-    "minimal bedroom soft shadows calm",
-    "scandinavian interior warm beige aesthetic",
-    "minimal home workspace warm soft light",
-    "calm neutral interior soft golden light",
-    "cozy armchair warm natural window light",
-    "minimal apartment interior soft cinematic mood",
-]
+DAILY_PHRASE_SEASON_NATURE_PHOTOS = {
+    "spring": [
+        "green spring forest path soft fog cinematic",
+        "fresh spring meadow wildflowers soft morning light",
+        "river in spring forest lush greenery moody",
+    ],
+    "summer": [
+        "deep green summer forest trail cinematic",
+        "mountain lake summer nature calm overcast",
+        "green valley summer clouds atmospheric",
+    ],
+    "autumn": [
+        "autumn forest path golden leaves misty mood",
+        "mountain forest autumn fog cinematic",
+        "rainy autumn woodland moody nature",
+    ],
+    "winter": [
+        "winter pine forest soft snow overcast cinematic",
+        "frozen lake winter mountains moody atmosphere",
+        "snowy forest trail calm winter nature",
+    ],
+}
+
+DAILY_PHRASE_MONTH_NATURE_PHOTOS = {
+    1:  ["snowy pine forest blue winter haze", "frozen river valley winter overcast"],
+    2:  ["misty winter forest soft grey light", "late winter mountain forest cinematic"],
+    3:  ["early spring buds forest path fresh green", "spring rain forest moss cinematic"],
+    4:  ["spring meadow flowers soft clouds nature", "fresh green park trees after rain"],
+    5:  ["lush green forest canopy soft light", "mountain valley spring greenery atmospheric"],
+    6:  ["summer forest shadows calm natural light", "green hills and lake early summer"],
+    7:  ["deep summer pine forest moody cinematic", "mountain lake reflections summer clouds"],
+    8:  ["late summer green valley haze cinematic", "forest lake calm end of summer mood"],
+    9:  ["early autumn forest green-gold transition", "misty september woodland trail"],
+    10: ["autumn foliage forest cinematic overcast", "foggy october forest path moody"],
+    11: ["late autumn bare forest mist grey mood", "rainy november woodland cinematic"],
+    12: ["first snow pine forest winter calm", "december mountain forest overcast atmosphere"],
+}
+
+DAILY_PHRASE_MONTH_STAGE_HINTS = {
+    "early": ["fresh", "new month energy", "soft morning"],
+    "mid": ["steady", "balanced calm", "natural rhythm"],
+    "late": ["reflective", "deep focus", "quiet mood"],
+}
+
+SITUATION_SEASON_STYLE = {
+    "spring": [
+        "soft spring atmosphere",
+        "fresh green tones",
+        "gentle natural light",
+    ],
+    "summer": [
+        "clear summer mood",
+        "warm balanced light",
+        "clean cinematic contrast",
+    ],
+    "autumn": [
+        "cozy autumn mood",
+        "golden-brown tones",
+        "soft misty atmosphere",
+    ],
+    "winter": [
+        "cool winter mood",
+        "deep calm contrast",
+        "soft overcast light",
+    ],
+}
+
+SITUATION_MONTH_STAGE_STYLE = {
+    "early": ["fresh start", "light dynamic feel"],
+    "mid": ["stable rhythm", "balanced composition"],
+    "late": ["reflective mood", "calm deeper tone"],
+}
 
 QUOTE_PHOTOS = [
     "misty forest sunbeams dramatic golden moody",
@@ -354,29 +570,55 @@ def get_photo_query_for_daily_phrase() -> str:
 
 
 async def get_daily_phrase_photo_query(history_mgr) -> str:
-    """Повертає стилізований фон daily_phrase без швидких повторів."""
+    """Повертає сезонний природний фон daily_phrase: сезон + місяць + дата."""
     holiday = get_today_holiday()
     if holiday:
         log.info(f"🎉 Holiday detected: {holiday['name']}")
         return holiday["photo_query"]
 
-    key = "used:daily_phrase_photo_queries"
+    today = date.today()
+    month = today.month
+    day = today.day
+    season = get_season(month)
+    if day <= 10:
+        stage = "early"
+    elif day <= 20:
+        stage = "mid"
+    else:
+        stage = "late"
+
+    seasonal_pool = DAILY_PHRASE_SEASON_NATURE_PHOTOS.get(season, [])
+    monthly_pool = DAILY_PHRASE_MONTH_NATURE_PHOTOS.get(month, [])
+    stage_hints = DAILY_PHRASE_MONTH_STAGE_HINTS.get(stage, [])
+    base_pool = seasonal_pool + monthly_pool
+    if stage_hints:
+        # Додаємо підказку стадії місяця до частини запитів для м'якого date-aware ефекту.
+        staged_pool = [f"{q} {random.choice(stage_hints)}" for q in random.sample(base_pool, k=min(3, len(base_pool)))]
+    else:
+        staged_pool = []
+    candidates = base_pool + staged_pool
+    if not candidates:
+        candidates = ["green nature landscape cinematic moody"]
+
+    key = "used:daily_phrase_photo_queries_v2"
     try:
         used_raw = await history_mgr.r.lrange(key, 0, -1)
         used_set = set(used_raw or [])
-        available = [q for q in DAILY_PHRASE_STYLE_PHOTOS if q not in used_set]
+        available = [q for q in candidates if q not in used_set]
         if not available:
-            log.info("🔄 Daily phrase style photos exhausted — resetting rotation")
+            log.info("🔄 Daily phrase nature photo pool exhausted — resetting rotation")
             await history_mgr.r.delete(key)
-            available = DAILY_PHRASE_STYLE_PHOTOS
+            available = candidates
 
         query = random.choice(available)
         await history_mgr.r.lpush(key, query)
-        await history_mgr.r.ltrim(key, 0, len(DAILY_PHRASE_STYLE_PHOTOS) - 1)
-        log.info(f"🎨 Daily phrase curated photo query: {query}")
+        await history_mgr.r.ltrim(key, 0, max(20, len(candidates)) - 1)
+        log.info(
+            f"🎨 Daily phrase nature photo query: '{query}' | season={season} month={month} day={day} stage={stage}"
+        )
         return query
     except Exception as e:
-        fallback = random.choice(DAILY_PHRASE_STYLE_PHOTOS)
+        fallback = random.choice(candidates)
         log.error(f"❌ get_daily_phrase_photo_query error: {e} — fallback '{fallback}'")
         return fallback
 
@@ -386,7 +628,27 @@ def get_photo_query_for_situation(category: dict) -> str:
     if holiday:
         log.info(f"🎉 Holiday situation photo: {holiday['name']}")
         return holiday["photo_query"] + " celebration"
-    return category["photo_query"]
+    today = date.today()
+    season = get_season(today.month)
+    if today.day <= 10:
+        stage = "early"
+    elif today.day <= 20:
+        stage = "mid"
+    else:
+        stage = "late"
+
+    base = category.get("photo_query", "everyday life realistic scene")
+    season_style = random.choice(SITUATION_SEASON_STYLE.get(season, ["cinematic soft light"]))
+    stage_style = random.choice(SITUATION_MONTH_STAGE_STYLE.get(stage, ["balanced composition"]))
+    # Для 5 блоків потрібен "спокійний" фон із вільним простором під текст.
+    query = (
+        f"{base} {season_style} {stage_style} "
+        "cinematic soft light minimal background soft bokeh copy space no text"
+    )
+    log.info(
+        f"🎨 Situation photo query: '{query}' | season={season} month={today.month} day={today.day} stage={stage}"
+    )
+    return query
 
 
 def get_photo_query_for_quote() -> str:
@@ -1144,7 +1406,9 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
         ua = p.get("ua", "")
         blocks += f"""
   <div class="glass-block" style="height:{block_height}px; padding:24px 52px; display:flex;
-       flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
+       flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;
+       background: rgba(8,10,16,0.74); border: 1px solid rgba(201,168,76,0.28);
+       backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);">
     <div style="font-size:{font_en}px; font-weight:700; color:#ffffff;
                 {ts} line-height:1.25; margin-bottom:12px;">{en}</div>
     <div style="font-size:{font_ua}px; font-weight:300; color:rgba(245,245,247,0.82);
@@ -1408,9 +1672,9 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
 
         # Якщо Gemini повернув кращий photo_query — оновлюємо фото
         ai_photo_query = data.get("photo_query", "").strip()
-        # Для daily_phrase тримаємо curated-стиль, тому AI photo_query не застосовуємо.
-        if rubric == "daily_phrase" and ai_photo_query and ai_photo_query != photo_query:
-            log.info(f"🎨 Daily phrase: skip AI photo query to keep curated style | ai='{ai_photo_query}'")
+        # Для daily_phrase/situation_phrases тримаємо контрольований стиль, тому AI photo_query не застосовуємо.
+        if rubric in {"daily_phrase", "situation_phrases"} and ai_photo_query and ai_photo_query != photo_query:
+            log.info(f"🎨 {rubric}: skip AI photo query to keep controlled style | ai='{ai_photo_query}'")
             ai_photo_query = ""
 
         if ai_photo_query and ai_photo_query != photo_query:
