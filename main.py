@@ -486,12 +486,14 @@ SITUATION_MONTH_STAGE_STYLE = {
 }
 
 QUOTE_PHOTOS = [
-    "misty forest sunbeams dramatic golden moody",
-    "mountain peak sunrise alpenglow dramatic",
-    "ocean horizon sunrise golden dramatic",
-    "pine forest fog morning rays",
-    "waterfall long exposure nature",
-    "starry sky milky way mountains",
+    "green mountain lake overcast cinematic",
+    "waterfall rocks green forest cinematic",
+    "wild river through pine forest moody cinematic",
+    "rocky sea coastline dramatic nature",
+    "deep green canyon river aerial cinematic",
+    "forest lake reflections dark clouds cinematic",
+    "ocean cliffs waves dramatic moody nature",
+    "alpine lake shoreline pine trees cinematic",
 ]
 
 QUOTE_THEMES = [
@@ -531,6 +533,134 @@ WEAK_QUOTE_PATTERNS = (
     "be positive",
     "you can do it",
 )
+
+PREPOSITIONS_SUBTYPES = [
+    {
+        "name": "Time Prepositions",
+        "description": "in/on/at for time + during/for/since/until/by/within",
+        "examples": "in 2026, on Monday, at 7 PM, during the lesson, since 2020",
+    },
+    {
+        "name": "Place & Position Prepositions",
+        "description": "in/on/at for location + under/over/between/among/next to/opposite/behind/in front of",
+        "examples": "in the box, on the table, at the station, between two buildings",
+    },
+    {
+        "name": "Movement & Direction Prepositions",
+        "description": "to/towards/into/out of/across/through/past/along",
+        "examples": "go to school, walk across the street, run through the park",
+    },
+    {
+        "name": "Dependent Prepositions (Adj + Prep)",
+        "description": "interested in, proud of, famous for, good at, angry with, different from",
+        "examples": "She is interested in art.",
+    },
+    {
+        "name": "Dependent Prepositions (Verb + Prep)",
+        "description": "wait for, listen to, depend on, agree with, belong to, laugh at, think about",
+        "examples": "I’m waiting for the bus.",
+    },
+    {
+        "name": "Fixed Prepositional Phrases",
+        "description": "by mistake, on foot, in a hurry, at last, on holiday, by chance, in advance",
+        "examples": "We arrived at last.",
+    },
+]
+
+PREPOSITIONS_EXERCISE_FORMATS = [
+    "multiple_choice",
+    "sentence_transformation",
+    "error_correction",
+    "contextual_gap_fill",
+]
+
+CONFUSING_WORDS_SUBTYPES = [
+    {
+        "name": "Homophones",
+        "description": "same/very similar sound, different spelling/meaning",
+        "examples": "their/there/they're, its/it's, your/you're, weather/whether, passed/past",
+    },
+    {
+        "name": "Look-alikes",
+        "description": "similar spelling, different meaning/part of speech",
+        "examples": "accept/except, affect/effect, advice/advise, quiet/quite, loose/lose",
+    },
+    {
+        "name": "False Friends",
+        "description": "words that look familiar to Ukrainian speakers but mean something else",
+        "examples": "actual/actually, fabric, magazine, sympathetic",
+    },
+    {
+        "name": "Semantic Confusion",
+        "description": "near-synonyms or commonly confused usage pairs",
+        "examples": "make/do, say/tell/speak/talk, lend/borrow, rob/steal, remember/remind",
+    },
+]
+
+CONFUSING_WORDS_FORMATS = [
+    "multiple_choice",
+    "error_correction",
+    "definition_match",
+    "odd_one_out",
+]
+
+GRAMMAR_SUBTYPES = [
+    {
+        "name": "Verb Tenses",
+        "description": "present/past/future systems and time links",
+        "focus": "Present Simple vs Continuous, Past Simple vs Continuous, Present Perfect, Future forms, Past Perfect, Present Perfect Continuous",
+    },
+    {
+        "name": "Modals",
+        "description": "ability, permission, obligation, advice, possibility",
+        "focus": "can/could/be able to, must/have to/needn't, should/ought to/had better, may/might/could",
+    },
+    {
+        "name": "Sentence Structure",
+        "description": "complex syntax and clause control",
+        "focus": "Passive Voice, Conditionals (0/1/2), Reported Speech, Relative Clauses, Direct vs Indirect Questions",
+    },
+    {
+        "name": "Verb Patterns",
+        "description": "gerund vs infinitive patterns",
+        "focus": "verb + -ing, verb + to + infinitive, gerund after prepositions",
+    },
+    {
+        "name": "Nouns, Articles, Pronouns",
+        "description": "countability, article choice, pronoun forms",
+        "focus": "countable/uncountable, a/an/the/zero article, quantifiers, possessive/reflexive/relative pronouns",
+    },
+    {
+        "name": "Adjectives & Adverbs",
+        "description": "description quality and modifier control",
+        "focus": "comparatives/superlatives, -ed vs -ing adjectives, adjective order, adverbs of frequency/manner/degree",
+    },
+    {
+        "name": "Prepositions in Grammar Context",
+        "description": "time/place/movement/dependent prepositions in grammar frames",
+        "focus": "in/on/at, across/through/past/towards, depend on/wait for/good at",
+    },
+]
+
+GRAMMAR_EXERCISE_FORMATS = [
+    "multiple_choice",
+    "error_correction",
+    "sentence_transformation",
+    "form_selection",
+]
+
+GRAMMAR_SENTENCE_TYPES = [
+    "affirmative",
+    "negative",
+    "question",
+]
+
+QUIZ_VALIDATION_MAX_ATTEMPTS = 3
+QUIZ_SIGNATURE_HISTORY_LIMIT = 60
+QUIZ_SIGNATURE_CHECK_WINDOW = 40
+PHOTO_URL_HISTORY_LIMIT = 50
+PHOTO_URL_CHECK_WINDOW = 25
+PHOTO_URL_REFETCH_ATTEMPTS = 2
 
 
 def get_season(month: int) -> str:
@@ -655,6 +785,29 @@ def get_photo_query_for_quote() -> str:
     return random.choice(QUOTE_PHOTOS)
 
 
+async def get_quote_photo_query(history_mgr) -> str:
+    """Повертає фон для quote_motivation без швидких повторів."""
+    key = "used:quote_photo_queries"
+    try:
+        used_raw = await history_mgr.r.lrange(key, 0, -1)
+        used_set = set(used_raw or [])
+        available = [q for q in QUOTE_PHOTOS if q not in used_set]
+        if not available:
+            log.info("🔄 Quote photo pool exhausted — resetting rotation")
+            await history_mgr.r.delete(key)
+            available = QUOTE_PHOTOS
+
+        query = random.choice(available)
+        await history_mgr.r.lpush(key, query)
+        await history_mgr.r.ltrim(key, 0, len(QUOTE_PHOTOS) - 1)
+        log.info(f"🎨 Quote rotated photo query: {query}")
+        return query
+    except Exception as e:
+        fallback = random.choice(QUOTE_PHOTOS)
+        log.error(f"❌ get_quote_photo_query error: {e} — fallback '{fallback}'")
+        return fallback
+
+
 async def get_daily_phrase_topic(history_mgr) -> dict:
     """Вибирає випадкову тему з атласу, уникаючи повторів."""
     try:
@@ -758,6 +911,40 @@ class HistoryManager:
         except Exception as e:
             log.error(f"❌ Redis add_used error for [{rubric}]: {e}")
 
+    async def get_recent_signatures(self, rubric: str, limit: int = QUIZ_SIGNATURE_CHECK_WINDOW) -> list:
+        key = f"used:signatures:{rubric}"
+        try:
+            items = await self.r.lrange(key, 0, limit - 1)
+            return [item if isinstance(item, str) else str(item) for item in (items or [])]
+        except Exception as e:
+            log.error(f"❌ Redis get_recent_signatures error for [{rubric}]: {e}")
+            return []
+
+    async def add_signature(self, rubric: str, signature: str, max_items: int = QUIZ_SIGNATURE_HISTORY_LIMIT):
+        key = f"used:signatures:{rubric}"
+        try:
+            await self.r.lpush(key, signature)
+            await self.r.ltrim(key, 0, max_items - 1)
+        except Exception as e:
+            log.error(f"❌ Redis add_signature error for [{rubric}]: {e}")
+
+    async def get_recent_photo_urls(self, rubric: str, limit: int = PHOTO_URL_CHECK_WINDOW) -> list:
+        key = f"used:photo_urls:{rubric}"
+        try:
+            items = await self.r.lrange(key, 0, limit - 1)
+            return [item if isinstance(item, str) else str(item) for item in (items or [])]
+        except Exception as e:
+            log.error(f"❌ Redis get_recent_photo_urls error for [{rubric}]: {e}")
+            return []
+
+    async def add_photo_url(self, rubric: str, url: str, max_items: int = PHOTO_URL_HISTORY_LIMIT):
+        key = f"used:photo_urls:{rubric}"
+        try:
+            await self.r.lpush(key, url)
+            await self.r.ltrim(key, 0, max_items - 1)
+        except Exception as e:
+            log.error(f"❌ Redis add_photo_url error for [{rubric}]: {e}")
+
     async def acquire_lock(self, rubric: str, ttl: int = 300) -> bool:
         key = f"lock:{rubric}"
         try:
@@ -815,6 +1002,166 @@ class HistoryManager:
             log.info(f"🧭 Quote theme index advanced: {current} → {next_idx}")
         except Exception as e:
             log.error(f"❌ Redis advance_quote_theme_index error: {e}")
+
+    async def get_prepositions_subtype_index(self) -> int:
+        try:
+            val = await self.r.get("prepositions:subtype_rotation_index")
+            idx = int(val) if val is not None else 0
+            idx = idx % len(PREPOSITIONS_SUBTYPES)
+            log.info(f"📚 Prepositions subtype index: {idx}")
+            return idx
+        except Exception as e:
+            log.error(f"❌ Redis get_prepositions_subtype_index error: {e} — using index 0")
+            return 0
+
+    async def advance_prepositions_subtype_index(self):
+        try:
+            current = await self.get_prepositions_subtype_index()
+            next_idx = (current + 1) % len(PREPOSITIONS_SUBTYPES)
+            await self.r.set("prepositions:subtype_rotation_index", str(next_idx))
+            log.info(f"📚 Prepositions subtype index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_prepositions_subtype_index error: {e}")
+
+    async def get_prepositions_format_index(self) -> int:
+        try:
+            val = await self.r.get("prepositions:format_rotation_index")
+            idx = int(val) if val is not None else 0
+            idx = idx % len(PREPOSITIONS_EXERCISE_FORMATS)
+            log.info(f"🧩 Prepositions format index: {idx}")
+            return idx
+        except Exception as e:
+            log.error(f"❌ Redis get_prepositions_format_index error: {e} — using index 0")
+            return 0
+
+    async def advance_prepositions_format_index(self):
+        try:
+            current = await self.get_prepositions_format_index()
+            next_idx = (current + 1) % len(PREPOSITIONS_EXERCISE_FORMATS)
+            await self.r.set("prepositions:format_rotation_index", str(next_idx))
+            log.info(f"🧩 Prepositions format index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_prepositions_format_index error: {e}")
+
+    async def get_confusing_words_subtype_index(self) -> int:
+        try:
+            val = await self.r.get("confusing_words:subtype_rotation_index")
+            idx = int(val) if val is not None else 0
+            idx = idx % len(CONFUSING_WORDS_SUBTYPES)
+            log.info(f"🧠 ConfusingWords subtype index: {idx}")
+            return idx
+        except Exception as e:
+            log.error(f"❌ Redis get_confusing_words_subtype_index error: {e} — using index 0")
+            return 0
+
+    async def advance_confusing_words_subtype_index(self):
+        try:
+            current = await self.get_confusing_words_subtype_index()
+            next_idx = (current + 1) % len(CONFUSING_WORDS_SUBTYPES)
+            await self.r.set("confusing_words:subtype_rotation_index", str(next_idx))
+            log.info(f"🧠 ConfusingWords subtype index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_confusing_words_subtype_index error: {e}")
+
+    async def get_confusing_words_format_index(self) -> int:
+        try:
+            val = await self.r.get("confusing_words:format_rotation_index")
+            idx = int(val) if val is not None else 0
+            idx = idx % len(CONFUSING_WORDS_FORMATS)
+            log.info(f"🧠 ConfusingWords format index: {idx}")
+            return idx
+        except Exception as e:
+            log.error(f"❌ Redis get_confusing_words_format_index error: {e} — using index 0")
+            return 0
+
+    async def advance_confusing_words_format_index(self):
+        try:
+            current = await self.get_confusing_words_format_index()
+            next_idx = (current + 1) % len(CONFUSING_WORDS_FORMATS)
+            await self.r.set("confusing_words:format_rotation_index", str(next_idx))
+            log.info(f"🧠 ConfusingWords format index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_confusing_words_format_index error: {e}")
+
+    async def get_vocabulary_topic_index(self) -> int:
+        try:
+            val = await self.r.get("vocabulary:topic_rotation_index")
+            idx = int(val) if val is not None else 0
+            idx = idx % len(SITUATION_CATEGORIES)
+            log.info(f"📘 Vocabulary topic index: {idx}")
+            return idx
+        except Exception as e:
+            log.error(f"❌ Redis get_vocabulary_topic_index error: {e} — using index 0")
+            return 0
+
+    async def advance_vocabulary_topic_index(self):
+        try:
+            current = await self.get_vocabulary_topic_index()
+            next_idx = (current + 1) % len(SITUATION_CATEGORIES)
+            await self.r.set("vocabulary:topic_rotation_index", str(next_idx))
+            log.info(f"📘 Vocabulary topic index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_vocabulary_topic_index error: {e}")
+
+    async def get_grammar_subtype_index(self) -> int:
+        try:
+            val = await self.r.get("grammar:subtype_rotation_index")
+            idx = int(val) if val is not None else 0
+            idx = idx % len(GRAMMAR_SUBTYPES)
+            log.info(f"🧱 Grammar subtype index: {idx}")
+            return idx
+        except Exception as e:
+            log.error(f"❌ Redis get_grammar_subtype_index error: {e} — using index 0")
+            return 0
+
+    async def advance_grammar_subtype_index(self):
+        try:
+            current = await self.get_grammar_subtype_index()
+            next_idx = (current + 1) % len(GRAMMAR_SUBTYPES)
+            await self.r.set("grammar:subtype_rotation_index", str(next_idx))
+            log.info(f"🧱 Grammar subtype index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_grammar_subtype_index error: {e}")
+
+    async def get_grammar_format_index(self) -> int:
+        try:
+            val = await self.r.get("grammar:format_rotation_index")
+            idx = int(val) if val is not None else 0
+            idx = idx % len(GRAMMAR_EXERCISE_FORMATS)
+            log.info(f"🧱 Grammar format index: {idx}")
+            return idx
+        except Exception as e:
+            log.error(f"❌ Redis get_grammar_format_index error: {e} — using index 0")
+            return 0
+
+    async def advance_grammar_format_index(self):
+        try:
+            current = await self.get_grammar_format_index()
+            next_idx = (current + 1) % len(GRAMMAR_EXERCISE_FORMATS)
+            await self.r.set("grammar:format_rotation_index", str(next_idx))
+            log.info(f"🧱 Grammar format index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_grammar_format_index error: {e}")
+
+    async def get_grammar_sentence_type_index(self) -> int:
+        try:
+            val = await self.r.get("grammar:sentence_type_rotation_index")
+            idx = int(val) if val is not None else 0
+            idx = idx % len(GRAMMAR_SENTENCE_TYPES)
+            log.info(f"🧱 Grammar sentence type index: {idx}")
+            return idx
+        except Exception as e:
+            log.error(f"❌ Redis get_grammar_sentence_type_index error: {e} — using index 0")
+            return 0
+
+    async def advance_grammar_sentence_type_index(self):
+        try:
+            current = await self.get_grammar_sentence_type_index()
+            next_idx = (current + 1) % len(GRAMMAR_SENTENCE_TYPES)
+            await self.r.set("grammar:sentence_type_rotation_index", str(next_idx))
+            log.info(f"🧱 Grammar sentence type index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_grammar_sentence_type_index error: {e}")
 
 # ──────────────────────────────────────────────
 # ФОТО API
@@ -1003,6 +1350,7 @@ def get_prompt(rubric: str, used_history: list, extra: dict = None) -> str:
         if used_history else ""
     )
     extra = extra or {}
+    cefr_band = extra.get("cefr_band", "A2-B1")
 
     if rubric == "daily_phrase":
         topic_name = extra.get("topic_name", "")
@@ -1085,8 +1433,19 @@ Rules:
 {LANGUAGE_CENSOR}"""
 
     if rubric == "grammar_quiz":
-        return f"""You are an English teacher. Create a grammar quiz question for A2 level students.
+        subtype = extra.get("grammar_subtype", "Verb Tenses")
+        subtype_desc = extra.get("grammar_subtype_desc", "core grammar control for A2-B1")
+        subtype_focus = extra.get("grammar_subtype_focus", "present and past contrasts")
+        exercise_format = extra.get("grammar_format", "multiple_choice")
+        sentence_type = extra.get("grammar_sentence_type", "affirmative")
+        return f"""You are an English teacher. Create a grammar quiz question for A2-B1 level students.
 {history_note}
+Target CEFR level: {cefr_band}.
+Selected grammar subtype (MANDATORY): {subtype}
+Subtype scope: {subtype_desc}
+Subtype focus points: {subtype_focus}
+Exercise format for this item (MANDATORY): {exercise_format}
+Preferred sentence type for this item: {sentence_type}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
   "question": "Grammar question with a blank ___ (max 100 chars)",
@@ -1098,13 +1457,37 @@ Rules:
 - Question and options in English only
 - Always provide exactly 4 options
 - correct_index is 0-based (0=A, 1=B, 2=C, 3=D)
-- Test common A2 grammar: tenses, articles, prepositions with adjectives
+- Telegram sendPoll supports ONE question only, so output exactly one question item
+- Keep difficulty in A2-B1 range: clear context + one key grammar decision
+- The question MUST match the selected subtype
+- Rotate these grammar families over time:
+  1) Verb Tenses
+  2) Modals
+  3) Sentence Structure (passive, conditionals, reported speech, relative clauses, indirect questions)
+  4) Verb Patterns (gerund/infinitive)
+  5) Nouns/Articles/Pronouns
+  6) Adjectives/Adverbs
+  7) Prepositions in grammar context
+- Exercise format behavior:
+  - multiple_choice: standard one-gap grammar choice
+  - error_correction: sentence has a grammar mistake, options are corrected variants
+  - sentence_transformation: complete transformed sentence with correct grammar form
+  - form_selection: choose correct verb/modal/article form by context
+- If selected subtype is Verb Tenses:
+  - rotate sentence forms, not only affirmative
+  - include negative and question patterns regularly
+  - respect selected sentence type: affirmative / negative / question
 - Explanation in Ukrainian
 {LANGUAGE_CENSOR}"""
 
     if rubric == "vocabulary_quiz":
-        return f"""You are an English teacher. Create a vocabulary quiz question for A2 level students.
+        topic_name = extra.get("vocab_topic_name", "Daily Life")
+        topic_desc = extra.get("vocab_topic_desc", "everyday real-life contexts")
+        return f"""You are an English teacher. Create a vocabulary quiz question for A2-B1 level students.
 {history_note}
+Target CEFR level: {cefr_band}.
+Selected vocabulary theme (MANDATORY): {topic_name}
+Theme scope: {topic_desc}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
   "question": "Vocabulary question with a blank ___ (max 100 chars)",
@@ -1115,13 +1498,24 @@ Return ONLY valid JSON, no markdown, no extra text:
 Rules:
 - Question and options in English only
 - correct_index is 0-based
-- Test everyday A2 vocabulary in context sentences
+- Test everyday A2-B1 vocabulary in context sentences
+- The sentence MUST match the selected vocabulary theme
+- Use practical real-life context instead of abstract examples
 - Explanation in Ukrainian
 {LANGUAGE_CENSOR}"""
 
     if rubric == "confusing_words_quiz":
-        return f"""You are an English teacher. Create a quiz about commonly confused English words for A2 level students.
+        subtype = extra.get("confusing_subtype", "Semantic Confusion")
+        subtype_desc = extra.get("confusing_subtype_desc", "commonly confused words by context")
+        subtype_examples = extra.get("confusing_subtype_examples", "make/do, lend/borrow")
+        exercise_format = extra.get("confusing_format", "multiple_choice")
+        return f"""You are an English teacher. Create a quiz about commonly confused English words for A2-B1 level students.
 {history_note}
+Target CEFR level: {cefr_band}.
+Selected subtype (MANDATORY): {subtype}
+Subtype scope: {subtype_desc}
+Subtype examples: {subtype_examples}
+Exercise format for this item (MANDATORY): {exercise_format}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
   "question": "Sentence with a blank ___ testing confusing words (max 100 chars)",
@@ -1131,13 +1525,38 @@ Return ONLY valid JSON, no markdown, no extra text:
 }}
 Rules:
 - Question and options in English only
-- Test confusing pairs: look/see/watch, make/do, say/tell, bring/take, etc.
+- Always provide exactly 4 options
+- correct_index is 0-based and must point to the only correct option
+- Telegram sendPoll supports ONE question only, so output exactly one question item (no series)
+- Rotate confusion families over time:
+  1) Homophones
+  2) Look-alikes
+  3) False Friends
+  4) Semantic Confusion
+- Keep complexity in A2-B1 range:
+  - A2: everyday high-frequency words in clear contexts
+  - B1: nuanced usage (make/do, say/tell/speak/talk, lend/borrow, rob/steal...)
+- Exercise format behavior:
+  - multiple_choice: standard single gap
+  - error_correction: question contains wrong usage; options provide corrections
+  - definition_match: short definition in question; options are candidate words
+  - odd_one_out: pick the item that does NOT fit semantic/usage pattern
+- Avoid repeating the same pair and near-identical stem from recent history
 - Explanation in Ukrainian
 {LANGUAGE_CENSOR}"""
 
     if rubric == "prepositions_quiz":
-        return f"""You are an English teacher. Create a prepositions quiz question for A2 level students.
+        subtype = extra.get("prepositions_subtype", "Time Prepositions")
+        subtype_desc = extra.get("prepositions_subtype_desc", "in/on/at and common related prepositions")
+        subtype_examples = extra.get("prepositions_subtype_examples", "in May, on Monday, at 5 PM")
+        exercise_format = extra.get("exercise_format", "multiple_choice")
+        return f"""You are an English teacher. Create a prepositions quiz question for A2-B1 level students.
 {history_note}
+Target CEFR level: {cefr_band}.
+Selected subtype (MANDATORY): {subtype}
+Subtype scope: {subtype_desc}
+Subtype examples: {subtype_examples}
+Exercise format for this item (MANDATORY): {exercise_format}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
   "question": "Sentence with a missing preposition ___ (max 100 chars)",
@@ -1147,7 +1566,22 @@ Return ONLY valid JSON, no markdown, no extra text:
 }}
 Rules:
 - Question and options in English only
-- Test common prepositions: in/on/at, to/for/of, with/by/from, etc.
+- Always provide exactly 4 options
+- correct_index is 0-based and must point to the only correct option
+- Keep one clear target gap (only one blank ___)
+- Rotate difficulty inside A2-B1: basic use + natural collocations
+- Never repeat very similar stems from recent history
+- Test prepositions across these families over time:
+  1) Time (in/on/at + during/for/since/until/by/within)
+  2) Place/Position (in/on/at + under/over/between/among/next to/opposite/behind/in front of)
+  3) Movement (to/towards/into/out of/across/through/past/along)
+  4) Dependent prepositions (adjective + preposition, verb + preposition)
+  5) Fixed prepositional phrases (by mistake, on foot, in a hurry, at last...)
+- Exercise format behavior:
+  - multiple_choice: classic single sentence gap fill
+  - sentence_transformation: ask to complete transformed sentence with one preposition
+  - error_correction: show wrong sentence in question, options are candidate corrections/prepositions
+  - contextual_gap_fill: short 1-2 sentence context, but only ONE target gap for Telegram quiz
 - Explanation in Ukrainian
 {LANGUAGE_CENSOR}"""
 
@@ -1159,6 +1593,33 @@ Rules:
 CRITICAL_ERRORS = {
     "INVALID_ARGUMENT", "API_KEY_INVALID", "PERMISSION_DENIED",
     "invalid_api_key", "authentication_failed", "account_suspended",
+}
+
+QUIZ_FALLBACK_BANK = {
+    "grammar_quiz": {
+        "question": "If it ___ tomorrow, we'll stay home.",
+        "options": ["rains", "rained", "is raining", "will rain"],
+        "correct_index": 0,
+        "explanation_ua": "💡 У First Conditional після if вживаємо Present Simple: If it rains...",
+    },
+    "vocabulary_quiz": {
+        "question": "At the airport, show your ___ at check-in.",
+        "options": ["boarding pass", "recipe", "blanket", "ticket office"],
+        "correct_index": 0,
+        "explanation_ua": "💡 Boarding pass — це посадковий талон, який показують на реєстрації.",
+    },
+    "confusing_words_quiz": {
+        "question": "Can I ___ your pen for a minute?",
+        "options": ["borrow", "lend", "bring", "carry"],
+        "correct_index": 0,
+        "explanation_ua": "💡 Borrow = брати в когось, lend = давати комусь.",
+    },
+    "prepositions_quiz": {
+        "question": "She has lived here ___ 2021.",
+        "options": ["since", "for", "during", "until"],
+        "correct_index": 0,
+        "explanation_ua": "💡 Since вживаємо з початковою точкою в часі: since 2021.",
+    },
 }
 
 
@@ -1174,6 +1635,95 @@ def _normalize_quote_text(text: str) -> str:
     text = re.sub(r"[^a-z0-9а-щьюяєіїґ\s]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+def _normalize_text(text: str) -> str:
+    text = text.lower().strip()
+    text = re.sub(r"[^a-z0-9а-щьюяєіїґ\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def _safe_html(text: str) -> str:
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
+
+
+def get_cefr_band_for_today() -> str:
+    # Пн-Вт A2, Ср-Чт A2+, Пт-Сб B1, Нд mixed review
+    weekday = datetime.now().weekday()  # Mon=0 ... Sun=6
+    if weekday in (0, 1):
+        return "A2"
+    if weekday in (2, 3):
+        return "A2+"
+    if weekday in (4, 5):
+        return "B1"
+    return "A2-B1 mixed review"
+
+
+def build_quiz_signature(rubric: str, data: dict, extra: dict | None = None) -> str:
+    extra = extra or {}
+    q = _normalize_text(str(data.get("question", "")))
+    signature_parts = [rubric, q]
+    for key in (
+        "grammar_subtype",
+        "grammar_format",
+        "grammar_sentence_type",
+        "vocab_topic_name",
+        "confusing_subtype",
+        "confusing_format",
+        "prepositions_subtype",
+        "exercise_format",
+    ):
+        if key in extra:
+            signature_parts.append(_normalize_text(str(extra[key])))
+    return "|".join(signature_parts)
+
+
+def validate_quiz_payload(rubric: str, data: dict, history: list, recent_signatures: list, extra: dict | None = None) -> tuple[bool, str]:
+    extra = extra or {}
+    question = str(data.get("question", "")).strip()
+    options = data.get("options", [])
+    correct = data.get("correct_index", -1)
+    explanation = str(data.get("explanation_ua", "")).strip()
+
+    if not question:
+        return False, "empty question"
+    if len(question) > 300:
+        return False, "question too long"
+    if not isinstance(options, list) or len(options) != 4:
+        return False, "options must be exactly 4"
+    clean_options = [str(o).strip() for o in options]
+    if any(not o for o in clean_options):
+        return False, "empty option"
+    if len(set(o.lower() for o in clean_options)) < 4:
+        return False, "duplicate options"
+    if not isinstance(correct, int) or correct < 0 or correct > 3:
+        return False, "invalid correct_index"
+    if len(explanation) < 8:
+        return False, "explanation too short"
+
+    q_norm = _normalize_text(question)
+    if len(q_norm.split()) < 4:
+        return False, "question too short"
+    hist_norm = [_normalize_text(h) for h in history[-30:]]
+    if any(q_norm and (q_norm in h or h in q_norm) for h in hist_norm if h):
+        return False, "question too similar to history"
+
+    signature = build_quiz_signature(rubric, data, extra)
+    recent_sig_norm = {_normalize_text(s) for s in recent_signatures}
+    if _normalize_text(signature) in recent_sig_norm:
+        return False, "signature repeated recently"
+
+    if "___" not in question:
+        if rubric in {"grammar_quiz", "vocabulary_quiz", "prepositions_quiz"}:
+            return False, "missing blank marker ___"
+
+    return True, "ok"
 
 
 def validate_quote_motivation(data: dict, used_history: list) -> tuple[bool, str]:
@@ -1302,6 +1852,31 @@ async def generate_quote_motivation_content(history: list, extra: dict = None, m
 
     raise RuntimeError(f"quote_motivation failed validation after {max_attempts} attempts")
 
+
+async def generate_quiz_content_with_validation(
+    rubric: str,
+    history: list,
+    extra: dict | None = None,
+    recent_signatures: list | None = None,
+    max_attempts: int = 3,
+) -> tuple[dict, int, str]:
+    recent_signatures = recent_signatures or []
+    last_reason = "unknown"
+    for attempt in range(1, max_attempts + 1):
+        data = await generate_content(rubric, history, extra or {})
+        ok, reason = validate_quiz_payload(rubric, data, history, recent_signatures, extra or {})
+        if ok:
+            return data, attempt, "ok"
+        last_reason = reason
+        log.warning(f"⚠️ {rubric} rejected (attempt {attempt}/{max_attempts}): {reason}")
+        history = history + [str(data.get("question", "")).strip()[:120]]
+
+    fallback = QUIZ_FALLBACK_BANK.get(rubric, {})
+    if fallback:
+        log.warning(f"🛟 {rubric} fallback used after {max_attempts} failed attempts: {last_reason}")
+        return fallback, max_attempts + 1, f"fallback:{last_reason}"
+    raise RuntimeError(f"{rubric} failed validation after {max_attempts} attempts: {last_reason}")
+
 # ──────────────────────────────────────────────
 # HTML ШАБЛОНИ — GLASSMORPHISM
 # ──────────────────────────────────────────────
@@ -1346,9 +1921,9 @@ body {{ width: 1080px; height: 1920px; overflow: hidden; font-family: 'Montserra
 
 
 def build_daily_phrase(data: dict, photo_b64: str) -> str:
-    phrase = data.get("phrase_en", "")
-    ex_en  = data.get("example_en", "")
-    ex_ua  = data.get("example_ua", "")
+    phrase = _safe_html(data.get("phrase_en", ""))
+    ex_en  = _safe_html(data.get("example_en", ""))
+    ex_ua  = _safe_html(data.get("example_ua", ""))
     ts  = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
     ts2 = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
@@ -1359,19 +1934,19 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
                 text-transform:uppercase; margin-bottom:28px; {ts}">
       Daily Phrase
     </div>
-    <div style="font-size:clamp(46px,5vw,64px); font-weight:700; color:#ffffff;
+    <div style="font-size:clamp(46px,5vw,64px); font-weight:700; color:#fbf8f5;
                 {ts} line-height:1.25; flex:1; display:flex; align-items:center;">
       {phrase}
     </div>
   </div>
   <div class="glass-block" style="height:550px; padding:48px 60px; display:flex;
        flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
-    <div style="font-size:clamp(42px,4.5vw,58px); font-weight:600; color:#ffffff;
+    <div style="font-size:clamp(42px,4.5vw,58px); font-weight:600; color:#fbf8f5;
                 {ts} line-height:1.3; margin-bottom:4px;">
       {ex_en}
     </div>
     <div class="gold-line"></div>
-    <div style="font-size:clamp(40px,4.3vw,56px); font-weight:300; color:rgba(245,245,247,0.85);
+    <div style="font-size:clamp(40px,4.3vw,56px); font-weight:300; color:rgba(251,248,245,0.85);
                 {ts2} line-height:1.3; flex:1; display:flex; align-items:center;">
       {ex_ua}
     </div>
@@ -1384,7 +1959,7 @@ def build_daily_phrase(data: dict, photo_b64: str) -> str:
 
 def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
     phrases    = data.get("phrases", [])
-    topic_name = category.get("name", "")
+    topic_name = _safe_html(category.get("name", ""))
     ts  = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
     ts2 = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
@@ -1402,16 +1977,16 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
 
     blocks = topic_header
     for p in phrases[:5]:
-        en = p.get("en", "")
-        ua = p.get("ua", "")
+        en = _safe_html(p.get("en", ""))
+        ua = _safe_html(p.get("ua", ""))
         blocks += f"""
   <div class="glass-block" style="height:{block_height}px; padding:24px 52px; display:flex;
        flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;
        background: rgba(8,10,16,0.74); border: 1px solid rgba(201,168,76,0.28);
        backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);">
     <div style="font-size:{font_en}px; font-weight:700; color:#ffffff;
-                {ts} line-height:1.25; margin-bottom:12px;">{en}</div>
-    <div style="font-size:{font_ua}px; font-weight:300; color:rgba(245,245,247,0.82);
+                {ts} line-height:1.25; margin-bottom:12px; color:#fbf8f5;">{en}</div>
+    <div style="font-size:{font_ua}px; font-weight:300; color:rgba(251,248,245,0.84);
                 {ts2} line-height:1.25;">{ua}</div>
   </div>"""
 
@@ -1427,8 +2002,8 @@ def build_situation_phrases(data: dict, photo_b64: str, category: dict) -> str:
 
 
 def build_quote_motivation(data: dict, photo_b64: str) -> str:
-    quote_en = data.get("quote_en", "")
-    quote_ua = data.get("quote_ua", "")
+    quote_en = _safe_html(data.get("quote_en", ""))
+    quote_ua = _safe_html(data.get("quote_ua", ""))
     ts  = "text-shadow: 0 2px 8px rgba(0,0,0,0.85), 0 1px 3px rgba(0,0,0,0.95);"
     ts2 = "text-shadow: 0 2px 6px rgba(0,0,0,0.75), 0 1px 3px rgba(0,0,0,0.85);"
 
@@ -1439,7 +2014,7 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
                 text-transform:uppercase; margin-bottom:28px; {ts}">
       Motivation
     </div>
-    <div style="font-size:clamp(46px,5vw,64px); font-weight:700; color:#ffffff;
+    <div style="font-size:clamp(46px,5vw,64px); font-weight:700; color:#fbf8f5;
                 {ts} line-height:1.3; flex:1; display:flex; align-items:center;">
       {quote_en}
     </div>
@@ -1447,7 +2022,7 @@ def build_quote_motivation(data: dict, photo_b64: str) -> str:
   </div>
   <div class="glass-block" style="height:560px; padding:48px 60px; display:flex;
        flex-direction:column; justify-content:center; overflow:hidden; box-sizing:border-box;">
-    <div style="font-size:clamp(46px,5vw,64px); font-weight:300; color:rgba(245,245,247,0.88);
+    <div style="font-size:clamp(46px,5vw,64px); font-weight:300; color:rgba(251,248,245,0.88);
                 {ts2} line-height:1.3; flex:1; display:flex; align-items:center;">
       {quote_ua}
     </div>
@@ -1551,6 +2126,8 @@ async def send_quiz_to_telegram(data: dict, rubric: str) -> bool:
         return False
     if len(explanation) > 200:
         explanation = explanation[:200]
+    if explanation and not explanation.lstrip().startswith("💡"):
+        explanation = f"💡 {explanation}"
 
     if not question or not options or len(options) < 2:
         log.error(f"❌ Quiz data invalid for [{rubric}]: question='{question}' options={options}")
@@ -1641,13 +2218,20 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
             }
             log.info(f"🧭 quote_motivation selected theme: {theme['name']}")
             log.info(f"📣 [NF] quote_motivation theme selected | index={theme_idx} | name='{theme['name']}'")
-            photo_query = get_photo_query_for_quote()
+            photo_query = await get_quote_photo_query(history_mgr)
 
         log.info(f"🔍 Photo query for [{rubric}]: '{photo_query}'")
 
         # 2. Завантажуємо фото
         use_topics = rubric != "situation_phrases"
         photo_url = await fetch_photo(photo_query, use_topics=use_topics)
+        recent_photo_urls = await history_mgr.get_recent_photo_urls(rubric, limit=PHOTO_URL_CHECK_WINDOW)
+        for _ in range(PHOTO_URL_REFETCH_ATTEMPTS):
+            if photo_url and photo_url in set(recent_photo_urls):
+                log.warning(f"⚠️ Repeated photo URL detected for [{rubric}] — refetching")
+                photo_url = await fetch_photo(photo_query, use_topics=use_topics)
+            else:
+                break
         if not photo_url:
             log.error(f"❌ No photo available for [{rubric}] — SKIPPING POST")
             return
@@ -1673,7 +2257,7 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
         # Якщо Gemini повернув кращий photo_query — оновлюємо фото
         ai_photo_query = data.get("photo_query", "").strip()
         # Для daily_phrase/situation_phrases тримаємо контрольований стиль, тому AI photo_query не застосовуємо.
-        if rubric in {"daily_phrase", "situation_phrases"} and ai_photo_query and ai_photo_query != photo_query:
+        if rubric in {"daily_phrase", "situation_phrases", "quote_motivation"} and ai_photo_query and ai_photo_query != photo_query:
             log.info(f"🎨 {rubric}: skip AI photo query to keep controlled style | ai='{ai_photo_query}'")
             ai_photo_query = ""
 
@@ -1710,6 +2294,8 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
         if success:
             history_key = json.dumps(data, ensure_ascii=False)[:100]
             await history_mgr.add_used(rubric, history_key)
+            if photo_url:
+                await history_mgr.add_photo_url(rubric, photo_url)
             if rubric == "quote_motivation":
                 theme_name = extra.get("quote_theme_name", "unknown")
                 quote_preview = str(data.get("quote_en", "")).strip()[:120]
@@ -1738,9 +2324,78 @@ async def publish_quiz(rubric: str, redis_client: UpstashRedis):
     try:
         # 1. Генеруємо контент
         history = await history_mgr.get_used(rubric)
+        recent_signatures = await history_mgr.get_recent_signatures(rubric, limit=QUIZ_SIGNATURE_CHECK_WINDOW)
+        extra = {}
+        cefr_band = get_cefr_band_for_today()
+        extra["cefr_band"] = cefr_band
+        if rubric == "prepositions_quiz":
+            subtype_idx = await history_mgr.get_prepositions_subtype_index()
+            format_idx = await history_mgr.get_prepositions_format_index()
+            subtype = PREPOSITIONS_SUBTYPES[subtype_idx]
+            exercise_format = PREPOSITIONS_EXERCISE_FORMATS[format_idx]
+            extra = {
+                "prepositions_subtype": subtype["name"],
+                "prepositions_subtype_desc": subtype["description"],
+                "prepositions_subtype_examples": subtype["examples"],
+                "exercise_format": exercise_format,
+                "cefr_band": cefr_band,
+            }
+            log.info(f"📚 Prepositions selected subtype: {subtype['name']}")
+            log.info(f"🧩 Prepositions selected format: {exercise_format}")
+        elif rubric == "grammar_quiz":
+            subtype_idx = await history_mgr.get_grammar_subtype_index()
+            format_idx = await history_mgr.get_grammar_format_index()
+            sentence_type_idx = await history_mgr.get_grammar_sentence_type_index()
+            subtype = GRAMMAR_SUBTYPES[subtype_idx]
+            exercise_format = GRAMMAR_EXERCISE_FORMATS[format_idx]
+            sentence_type = GRAMMAR_SENTENCE_TYPES[sentence_type_idx]
+            extra = {
+                "grammar_subtype": subtype["name"],
+                "grammar_subtype_desc": subtype["description"],
+                "grammar_subtype_focus": subtype["focus"],
+                "grammar_format": exercise_format,
+                "grammar_sentence_type": sentence_type,
+                "cefr_band": cefr_band,
+            }
+            log.info(f"🧱 Grammar selected subtype: {subtype['name']}")
+            log.info(f"🧱 Grammar selected format: {exercise_format}")
+            if subtype["name"] == "Verb Tenses":
+                log.info(f"🧱 Grammar selected sentence type: {sentence_type}")
+        elif rubric == "vocabulary_quiz":
+            topic_idx = await history_mgr.get_vocabulary_topic_index()
+            topic = SITUATION_CATEGORIES[topic_idx]
+            extra = {
+                "vocab_topic_name": topic["name"],
+                "vocab_topic_desc": topic["description"],
+                "cefr_band": cefr_band,
+            }
+            log.info(f"📘 Vocabulary selected theme: {topic['name']}")
+        elif rubric == "confusing_words_quiz":
+            subtype_idx = await history_mgr.get_confusing_words_subtype_index()
+            format_idx = await history_mgr.get_confusing_words_format_index()
+            subtype = CONFUSING_WORDS_SUBTYPES[subtype_idx]
+            exercise_format = CONFUSING_WORDS_FORMATS[format_idx]
+            extra = {
+                "confusing_subtype": subtype["name"],
+                "confusing_subtype_desc": subtype["description"],
+                "confusing_subtype_examples": subtype["examples"],
+                "confusing_format": exercise_format,
+                "cefr_band": cefr_band,
+            }
+            log.info(f"🧠 ConfusingWords selected subtype: {subtype['name']}")
+            log.info(f"🧠 ConfusingWords selected format: {exercise_format}")
+        log.info(f"📣 [NF] {rubric} generation config | cefr='{cefr_band}' | extra={json.dumps(extra, ensure_ascii=False)[:220]}")
+
         log.info(f"🤖 Generating quiz for [{rubric}]...")
-        data = await generate_content(rubric, history)
+        data, attempts_used, validation_reason = await generate_quiz_content_with_validation(
+            rubric=rubric,
+            history=history,
+            extra=extra,
+            recent_signatures=recent_signatures,
+            max_attempts=QUIZ_VALIDATION_MAX_ATTEMPTS,
+        )
         log.info(f"✅ Quiz data: {json.dumps(data, ensure_ascii=False)[:200]}")
+        log.info(f"📣 [NF] {rubric} validation | attempts={attempts_used} | status='{validation_reason}'")
 
         # 2. Публікуємо
         success = await send_quiz_to_telegram(data, rubric)
@@ -1749,6 +2404,22 @@ async def publish_quiz(rubric: str, redis_client: UpstashRedis):
         if success:
             history_key = data.get("question", "")[:100]
             await history_mgr.add_used(rubric, history_key)
+            signature = build_quiz_signature(rubric, data, extra)
+            await history_mgr.add_signature(rubric, signature, max_items=QUIZ_SIGNATURE_HISTORY_LIMIT)
+            log.info(f"📣 [NF] {rubric} published | signature='{signature[:140]}'")
+            if rubric == "prepositions_quiz":
+                await history_mgr.advance_prepositions_subtype_index()
+                await history_mgr.advance_prepositions_format_index()
+            if rubric == "grammar_quiz":
+                await history_mgr.advance_grammar_subtype_index()
+                await history_mgr.advance_grammar_format_index()
+                if extra.get("grammar_subtype") == "Verb Tenses":
+                    await history_mgr.advance_grammar_sentence_type_index()
+            if rubric == "vocabulary_quiz":
+                await history_mgr.advance_vocabulary_topic_index()
+            if rubric == "confusing_words_quiz":
+                await history_mgr.advance_confusing_words_subtype_index()
+                await history_mgr.advance_confusing_words_format_index()
 
         elapsed = time.time() - start_time
         log.info(f"⏱️ [{rubric}] completed in {elapsed:.1f}s | success={success}")
