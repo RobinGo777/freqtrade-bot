@@ -485,6 +485,40 @@ SITUATION_MONTH_STAGE_STYLE = {
     "late": ["reflective mood", "calm deeper tone"],
 }
 
+# Теми з атласу без власного photo_query отримують generic — він часто дає сірі «чорно-білі» урбан-стоки.
+SITUATION_GENERIC_PHOTO_QUERY = "cinematic realistic scene soft light"
+
+# Базові запити для тем, де generic виглядає однаково (офіс, листи, зустрічі).
+SITUATION_TOPIC_PHOTO_BASE_OVERRIDES: dict[str, str] = {
+    "Emails & Calls": "warm desk lamp laptop screen morning office coffee cozy natural light colorful",
+    "Meetings": "modern conference room natural daylight indoor plants collaboration warm wood tones colorful",
+    "Office Life": "bright office interior warm natural window light plants laptop colorful not grey",
+    "Job Interview": "professional office lobby warm natural light modern interior soft color",
+    "Freelance & Remote Work": "cozy home office warm desk lamp plants natural light colorful",
+    "Networking": "coffee shop meeting warm bokeh people blurred background colorful candid",
+    "CV & Cover Letter": "minimal desk notebook pen warm wood natural light soft color",
+    "Sick Leave": "peaceful bedroom window soft morning light cozy warm tones",
+    "Work Phrasal Verbs": "casual office teamwork warm light collaborative colorful",
+    "Digital Etiquette": "smartphone laptop desk warm evening light cozy colorful screen glow",
+    "Online Communication": "video call laptop warm ring light home office cozy natural color",
+}
+
+# Ротація настрою кольору (Unsplash краще знаходить насичені кадри, ніж «minimal»).
+SITUATION_WARM_COLOR_MOODS = [
+    "warm golden amber tones vibrant color",
+    "soft teal and amber cinematic color grading cozy",
+    "sunlit interior warm natural palette rich color",
+    "evening city lights warm bokeh colorful not monochrome",
+    "morning soft fog pastel sky warm highlights",
+    "cozy indoor plants and wood warm earthy color",
+    "late afternoon honey light soft contrast colorful",
+]
+
+# Суфікс без «minimal» — він тягнув до плоских сірих фонів.
+SITUATION_PHOTO_QUERY_SUFFIX = (
+    "cinematic soft light copy space soft bokeh warm natural colors rich tones vibrant not monochrome no text"
+)
+
 QUOTE_PHOTOS = [
     "green mountain lake overcast cinematic",
     "waterfall rocks green forest cinematic",
@@ -753,11 +787,48 @@ async def get_daily_phrase_photo_query(history_mgr) -> str:
         return fallback
 
 
-def get_photo_query_for_situation(category: dict) -> str:
+def _infer_situation_base_from_topic_name(name: str) -> str | None:
+    n = name.lower()
+    if any(k in n for k in ("email", "call", "phone", "message")):
+        return "warm desk workspace laptop soft light cozy natural color"
+    if any(k in n for k in ("meeting", "conference", "agenda")):
+        return "conference room daylight warm natural indoor plants color"
+    if any(k in n for k in ("office", "work", "cv", "cover letter", "network", "freelance", "remote")):
+        return "modern office warm natural daylight interior color not grey"
+    if any(k in n for k in ("bank", "money", "post office", "tax", "budget", "insurance")):
+        return "urban street golden hour warm light bokeh colorful city"
+    if any(k in n for k in ("doctor", "dentist", "pharmacy", "health", "hospital", "gym")):
+        return "calm green nature healing soft morning warm light color"
+    if any(k in n for k in ("shop", "market", "clothes", "beauty", "sale")):
+        return "shopping district warm evening lights bokeh colorful"
+    if any(k in n for k in ("travel", "airport", "hotel", "train", "taxi")):
+        return "travel journey warm golden hour landscape soft color cinematic"
+    if any(k in n for k in ("home", "house", "apartment", "furniture", "tap", "lock")):
+        return "cozy home interior warm natural light soft color interior"
+    if any(k in n for k in ("weather", "nature", "animal", "environment")):
+        return "dramatic sky landscape warm natural colors golden hour outdoor"
+    return None
+
+
+def resolve_situation_base_photo_query(category: dict) -> str:
+    raw = (category.get("photo_query") or "").strip()
+    name = str(category.get("name") or "").strip()
+    if raw and raw != SITUATION_GENERIC_PHOTO_QUERY:
+        return raw
+    if name in SITUATION_TOPIC_PHOTO_BASE_OVERRIDES:
+        return SITUATION_TOPIC_PHOTO_BASE_OVERRIDES[name]
+    inferred = _infer_situation_base_from_topic_name(name) if name else None
+    if inferred:
+        return inferred
+    return raw or "cozy everyday life warm natural color soft light cinematic"
+
+
+async def get_situation_photo_query(history_mgr, category: dict) -> str:
     holiday = get_today_holiday()
     if holiday:
         log.info(f"🎉 Holiday situation photo: {holiday['name']}")
-        return holiday["photo_query"] + " celebration"
+        return holiday["photo_query"] + " celebration warm natural colors"
+
     today = date.today()
     season = get_season(today.month)
     if today.day <= 10:
@@ -767,18 +838,38 @@ def get_photo_query_for_situation(category: dict) -> str:
     else:
         stage = "late"
 
-    base = category.get("photo_query", "everyday life realistic scene")
+    base = resolve_situation_base_photo_query(category)
     season_style = random.choice(SITUATION_SEASON_STYLE.get(season, ["cinematic soft light"]))
     stage_style = random.choice(SITUATION_MONTH_STAGE_STYLE.get(stage, ["balanced composition"]))
-    # Для 5 блоків потрібен "спокійний" фон із вільним простором під текст.
-    query = (
-        f"{base} {season_style} {stage_style} "
-        "cinematic soft light minimal background soft bokeh copy space no text"
-    )
-    log.info(
-        f"🎨 Situation photo query: '{query}' | season={season} month={today.month} day={today.day} stage={stage}"
-    )
-    return query
+
+    def compose(mood: str) -> str:
+        return f"{base} {season_style} {stage_style} {mood} {SITUATION_PHOTO_QUERY_SUFFIX}"
+
+    moods = list(SITUATION_WARM_COLOR_MOODS)
+    random.shuffle(moods)
+    candidates = [compose(m) for m in moods]
+
+    key = "used:situation_photo_queries_v2"
+    try:
+        used_raw = await history_mgr.r.lrange(key, 0, -1)
+        used_set = set(used_raw or [])
+        available = [q for q in candidates if q not in used_set]
+        if not available:
+            log.info("🔄 Situation photo mood pool exhausted — resetting rotation")
+            await history_mgr.r.delete(key)
+            available = candidates
+
+        query = random.choice(available)
+        await history_mgr.r.lpush(key, query)
+        await history_mgr.r.ltrim(key, 0, 39)
+        log.info(
+            f"🎨 Situation photo query: '{query}' | season={season} month={today.month} day={today.day} stage={stage}"
+        )
+        return query
+    except Exception as e:
+        fallback = compose(random.choice(SITUATION_WARM_COLOR_MOODS))
+        log.error(f"❌ get_situation_photo_query error: {e} — fallback '{fallback}'")
+        return fallback
 
 
 def get_photo_query_for_quote() -> str:
@@ -2193,7 +2284,7 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
                     "situation_name": holiday["situation_name"],
                     "situation_description": holiday["situation_description"],
                 }
-                photo_query = get_photo_query_for_situation({})
+                photo_query = await get_situation_photo_query(history_mgr, {})
                 category = {
                     "name": holiday["situation_name"],
                     "emoji": "",
@@ -2206,7 +2297,7 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
                     "situation_name": category["name"],
                     "situation_description": category["description"],
                 }
-                photo_query = get_photo_query_for_situation(category)
+                photo_query = await get_situation_photo_query(history_mgr, category)
                 await history_mgr.advance_situation_index()
 
         elif rubric == "quote_motivation":
@@ -2222,14 +2313,18 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
 
         log.info(f"🔍 Photo query for [{rubric}]: '{photo_query}'")
 
-        # 2. Завантажуємо фото
-        use_topics = rubric != "situation_phrases"
+        # 2. Завантажуємо фото (situation: use_topics=True — кураторські колекції дають менше «сірого» урбану)
+        use_topics = True
         photo_url = await fetch_photo(photo_query, use_topics=use_topics)
         recent_photo_urls = await history_mgr.get_recent_photo_urls(rubric, limit=PHOTO_URL_CHECK_WINDOW)
         for _ in range(PHOTO_URL_REFETCH_ATTEMPTS):
             if photo_url and photo_url in set(recent_photo_urls):
                 log.warning(f"⚠️ Repeated photo URL detected for [{rubric}] — refetching")
-                photo_url = await fetch_photo(photo_query, use_topics=use_topics)
+                if rubric == "situation_phrases":
+                    refetch_q = f"{photo_query} alternate framing {random.choice(SITUATION_WARM_COLOR_MOODS)}"
+                else:
+                    refetch_q = photo_query
+                photo_url = await fetch_photo(refetch_q, use_topics=use_topics)
             else:
                 break
         if not photo_url:
