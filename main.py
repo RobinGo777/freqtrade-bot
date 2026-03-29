@@ -110,8 +110,25 @@ FFPROBE_BIN = _resolve_ffprobe(FFMPEG_BIN)
 
 
 def _media_executable_ok(cmd: str) -> bool:
-    if os.path.isfile(cmd) and os.access(cmd, os.X_OK):
-        return True
+    """У контейнерах `os.access(X_OK)` інколи False, хоча subprocess запускає бінарник (imageio-ffmpeg)."""
+    if not cmd:
+        return False
+    if os.path.isfile(cmd):
+        if os.access(cmd, os.X_OK):
+            return True
+        try:
+            r = subprocess.run(
+                [cmd, "-version"],
+                capture_output=True,
+                text=True,
+                timeout=8,
+            )
+            blob = ((r.stdout or "") + (r.stderr or "")).lower()
+            if "ffmpeg version" in blob or "ffprobe version" in blob:
+                return True
+        except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+            pass
+        return False
     return shutil.which(cmd) is not None
 
 
@@ -4943,14 +4960,21 @@ async def main():
     log.info(f"📝 Quiz rubrics: {QUIZ_RUBRICS}")
     log.info("🧪 HTTP: GET / — опис усіх тестових рубрик; GET /test/<rubric> — ручний запуск")
 
-    if not _media_executable_ok(FFMPEG_BIN) or not _media_executable_ok(FFPROBE_BIN):
+    ffmpeg_ok = _media_executable_ok(FFMPEG_BIN)
+    ffprobe_ok = _media_executable_ok(FFPROBE_BIN)
+    if not ffmpeg_ok:
         log.warning(
-            f"⚠️ ffmpeg/ffprobe недоступні (ffmpeg={FFMPEG_BIN!r}, ffprobe={FFPROBE_BIN!r}). "
-            "travel_video не зможе обробляти відео. Зберіть образ з Dockerfile (apt install ffmpeg) "
-            "або встановіть ffmpeg у середовищі / задайте FFMPEG_PATH та FFPROBE_PATH."
+            f"⚠️ ffmpeg недоступний ({FFMPEG_BIN!r}). travel_video не працюватиме. "
+            "Потрібен imageio-ffmpeg у requirements.txt або системний ffmpeg / FFMPEG_PATH."
         )
     else:
-        log.info(f"✅ ffmpeg: {FFMPEG_BIN!r}, ffprobe: {FFPROBE_BIN!r}")
+        log.info(f"✅ ffmpeg OK: {FFMPEG_BIN!r}")
+        if not ffprobe_ok:
+            log.info(
+                "ℹ️ ffprobe у PATH немає — тривалість кліпів через `ffmpeg -i` (це нормально з imageio-ffmpeg)."
+            )
+        else:
+            log.info(f"✅ ffprobe OK: {FFPROBE_BIN!r}")
 
     redis_client = UpstashRedis()
     try:
