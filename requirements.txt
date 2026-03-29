@@ -4,3 +4,6 @@ wheel
 greenlet==3.0.3
 httpx==0.27.0
 playwright==1.44.0
+google-cloud-texttospeech>=2.16.0
+# Статичний ffmpeg через pip — для PaaS без apt/Docker (travel_video)
+imageio-ffmpeg>=0.5.1
