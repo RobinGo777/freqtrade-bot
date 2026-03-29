@@ -60,32 +60,53 @@ ELEVENLABS_API_KEY   = os.environ.get("ELEVENLABS_API_KEY", "").strip()
 ELEVENLABS_VOICE_ID  = os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
 # Google Cloud TTS: шлях до JSON service account (у контейнері — secret mount)
 GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-# travel_video: FFMPEG_PATH / стандартні шляхи — на PaaS інколи «урезаний» PATH, хоча apt поклав бінар у /usr/bin
-def _resolve_media_bin(
-    env_name: str, default_name: str, known_paths: tuple[str, ...]
-) -> str:
-    p = os.environ.get(env_name, "").strip()
+# travel_video: системний ffmpeg → imageio-ffmpeg (pip тягне статичний бінар, якщо apt недоступний)
+def _resolve_ffmpeg() -> str:
+    p = os.environ.get("FFMPEG_PATH", "").strip()
     if p:
         return p
-    w = shutil.which(default_name)
+    w = shutil.which("ffmpeg")
     if w:
         return w
-    for candidate in known_paths:
+    for candidate in ("/usr/bin/ffmpeg", "/bin/ffmpeg", "/usr/local/bin/ffmpeg"):
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
             return candidate
-    return default_name
+    try:
+        import imageio_ffmpeg
+
+        exe = imageio_ffmpeg.get_ffmpeg_exe()
+        if exe and os.path.isfile(exe) and os.access(exe, os.X_OK):
+            log.info(f"✅ ffmpeg: imageio-ffmpeg → {exe}")
+            return exe
+    except Exception as e:
+        log.debug("imageio_ffmpeg: %s", e)
+    return "ffmpeg"
 
 
-FFMPEG_BIN = _resolve_media_bin(
-    "FFMPEG_PATH",
-    "ffmpeg",
-    ("/usr/bin/ffmpeg", "/bin/ffmpeg", "/usr/local/bin/ffmpeg"),
-)
-FFPROBE_BIN = _resolve_media_bin(
-    "FFPROBE_PATH",
-    "ffprobe",
-    ("/usr/bin/ffprobe", "/bin/ffprobe", "/usr/local/bin/ffprobe"),
-)
+def _resolve_ffprobe(ffmpeg_exe: str) -> str:
+    p = os.environ.get("FFPROBE_PATH", "").strip()
+    if p:
+        return p
+    w = shutil.which("ffprobe")
+    if w:
+        return w
+    for candidate in ("/usr/bin/ffprobe", "/bin/ffprobe", "/usr/local/bin/ffprobe"):
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    try:
+        base = os.path.dirname(ffmpeg_exe)
+        if base:
+            for name in ("ffprobe", "ffprobe.exe"):
+                cand = os.path.join(base, name)
+                if os.path.isfile(cand) and os.access(cand, os.X_OK):
+                    return cand
+    except Exception:
+        pass
+    return "ffprobe"
+
+
+FFMPEG_BIN = _resolve_ffmpeg()
+FFPROBE_BIN = _resolve_ffprobe(FFMPEG_BIN)
 
 
 def _media_executable_ok(cmd: str) -> bool:
@@ -1737,6 +1758,29 @@ def _travel_video_place_key(landmark: str, country: str) -> str:
     return _normalize_text(f"{landmark.strip()}|{country.strip()}")
 
 
+def _duration_from_ffmpeg_i(path: str) -> float:
+    """Якщо ffprobe недоступний (лише imageio-ffmpeg), тривалість з stderr `ffmpeg -i`."""
+    try:
+        r = subprocess.run(
+            [FFMPEG_BIN, "-hide_banner", "-i", path],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        m = re.search(
+            r"Duration:\s*(\d+):(\d+):(\d+\.?\d*)", r.stderr, re.IGNORECASE
+        )
+        if not m:
+            return 0.0
+        h, mn, sec = int(m.group(1)), int(m.group(2)), float(m.group(3))
+        return h * 3600 + mn * 60 + sec
+    except FileNotFoundError:
+        return 0.0
+    except Exception as e:
+        log.warning(f"⚠️ ffmpeg -i duration: {e}")
+        return 0.0
+
+
 def ffprobe_duration_seconds(path: str) -> float:
     try:
         r = subprocess.run(
@@ -1754,12 +1798,13 @@ def ffprobe_duration_seconds(path: str) -> float:
             text=True,
             timeout=120,
         )
-        if r.returncode != 0 or not r.stdout.strip():
-            return 0.0
-        return float(r.stdout.strip())
+        if r.returncode == 0 and r.stdout.strip():
+            return float(r.stdout.strip())
+    except FileNotFoundError:
+        pass
     except Exception as e:
         log.warning(f"⚠️ ffprobe duration: {e}")
-        return 0.0
+    return _duration_from_ffmpeg_i(path)
 
 
 def _run_ffmpeg(args: list[str]) -> bool:
@@ -1772,7 +1817,7 @@ def _run_ffmpeg(args: list[str]) -> bool:
     except FileNotFoundError:
         log.error(
             f"❌ ffmpeg не знайдено ({args[0]!r}). "
-            "У контейнері має бути пакет ffmpeg (див. Dockerfile) або змінна FFMPEG_PATH."
+            "Додайте imageio-ffmpeg (requirements.txt), системний ffmpeg (apt) або FFMPEG_PATH."
         )
         return False
     except Exception as e:
