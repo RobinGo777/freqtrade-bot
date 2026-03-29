@@ -60,17 +60,32 @@ ELEVENLABS_API_KEY   = os.environ.get("ELEVENLABS_API_KEY", "").strip()
 ELEVENLABS_VOICE_ID  = os.environ.get("ELEVENLABS_VOICE_ID", "").strip()
 # Google Cloud TTS: шлях до JSON service account (у контейнері — secret mount)
 GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-# travel_video: абсолютний шлях, якщо бінарник не в PATH (Railway/Nixpacks часто без ffmpeg — тоді Dockerfile або apt)
-def _resolve_media_bin(env_name: str, default_name: str) -> str:
+# travel_video: FFMPEG_PATH / стандартні шляхи — на PaaS інколи «урезаний» PATH, хоча apt поклав бінар у /usr/bin
+def _resolve_media_bin(
+    env_name: str, default_name: str, known_paths: tuple[str, ...]
+) -> str:
     p = os.environ.get(env_name, "").strip()
     if p:
         return p
     w = shutil.which(default_name)
-    return w if w else default_name
+    if w:
+        return w
+    for candidate in known_paths:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return default_name
 
 
-FFMPEG_BIN = _resolve_media_bin("FFMPEG_PATH", "ffmpeg")
-FFPROBE_BIN = _resolve_media_bin("FFPROBE_PATH", "ffprobe")
+FFMPEG_BIN = _resolve_media_bin(
+    "FFMPEG_PATH",
+    "ffmpeg",
+    ("/usr/bin/ffmpeg", "/bin/ffmpeg", "/usr/local/bin/ffmpeg"),
+)
+FFPROBE_BIN = _resolve_media_bin(
+    "FFPROBE_PATH",
+    "ffprobe",
+    ("/usr/bin/ffprobe", "/bin/ffprobe", "/usr/local/bin/ffprobe"),
+)
 
 
 def _media_executable_ok(cmd: str) -> bool:
