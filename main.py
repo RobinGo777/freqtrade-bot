@@ -87,7 +87,7 @@ WEEKDAY_10_00: dict[int, str] = {
     1: "vocabulary_15",      # Вт 10:00 — 15 слів + IPA (кремова картка)
     2: "daily_phrase",       # Ср 10:00 — фраза дня + приклад (en) + переклад (ua); build_daily_phrase + Unsplash
     3: "situation_phrases",  # Чт 10:00 — 5 фраз (en/ua) для життєвої ситуації; ротація SITUATION_CATEGORIES або тема свята; build_situation_phrases + Unsplash
-    4: "photo_relax",        # Пт 10:00 — природа (фото) + 4 речення en A2–B1 під знімком; Unsplash→Pexels→Pixabay
+    4: "photo_relax",        # Пт 10:00 — чисте фото PNG; 4 речення en A2 у caption; Unsplash→Pexels→Pixabay
 }
 
 # Сб / Нд о 16:00 — окремі рубрики (контент TBD)
@@ -1897,7 +1897,7 @@ Return ONLY valid JSON, no markdown, no extra text:
 Rules:
 - Output MUST be English only (no Ukrainian, no Russian).
 - Exactly 4 separate strings in "sentences" (4 sentences total).
-- CEFR A2–B1: simple, natural vocabulary; short or medium sentences; avoid rare words and complex grammar.
+- CEFR A2 ONLY: very simple, high-frequency words; short sentences; mostly present simple; avoid rare words, idioms, and long or complex grammar.
 - Tone: calm, soft, relaxing; you may also use a light neutral / descriptive tone sometimes.
 - Content should fit the visual theme above (sea, forest, mountains, lake, or waterfall — as described). Do NOT centre the text on rain, evening, night, cities, streets, or people.
 - You may use "you" sometimes, or write without addressing the reader — both are fine.
@@ -2588,174 +2588,59 @@ async def generate_interesting_cities_content(
 
 
 def build_interesting_cities(data: dict, photo_b64: str) -> str:
-    city = _safe_html(str(data.get("city_name", "")))
-    country = _safe_html(str(data.get("country", "")))
-    hook = _safe_html(str(data.get("hook", "")).strip())
-    famous = data.get("famous_for") or []
-    sights = data.get("sights") or []
-    why_visit = _safe_html(str(data.get("why_visit", "")).strip())
-    famous_html = "\n".join(
-        f'<p class="ic-para ic-fact">{_safe_html(str(p).strip())}</p>'
-        for p in famous[:2]
-        if str(p).strip()
-    )
-    li_html = "\n".join(
-        f'<li class="ic-li">{_safe_html(str(h).strip())}</li>' for h in sights[:3]
-    )
-
+    _ = data  # copy: Telegram caption only
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{
     width: 1080px;
     height: 1920px;
     overflow: hidden;
-    font-family: 'Montserrat', sans-serif;
-    background: #ebe6df;
-    display: flex;
-    flex-direction: column;
+    background: #111;
   }}
-  .ic-photo {{
+  .ic-photo-full {{
     width: 1080px;
-    height: 1020px;
-    flex-shrink: 0;
+    height: 1920px;
     background-image: url('data:image/jpeg;base64,{photo_b64}');
     background-size: cover;
     background-position: center;
   }}
-  .ic-body {{
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-    padding: 28px 44px 36px 44px;
-    background: #ebe6df;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 12px;
-    overflow: hidden;
-  }}
-  .ic-title {{
-    font-size: 28px;
-    font-weight: 600;
-    line-height: 1.25;
-    color: #1e1a17;
-    margin-bottom: 4px;
-  }}
-  .ic-hook {{
-    font-size: 23px;
-    font-weight: 500;
-    line-height: 1.38;
-    color: #2a2520;
-    margin: 0 0 10px 0;
-  }}
-  .ic-para {{
-    font-size: 22px;
-    font-weight: 400;
-    line-height: 1.42;
-    color: #2a2520;
-    margin: 0 0 6px 0;
-  }}
-  .ic-fact {{
-    font-size: 21px;
-    color: #3d3630;
-  }}
-  .ic-why {{
-    font-size: 22px;
-    font-weight: 500;
-    line-height: 1.4;
-    color: #1e1a17;
-    margin-top: 8px;
-  }}
-  .ic-ul {{
-    margin: 8px 0 0 0;
-    padding-left: 26px;
-    list-style-type: disc;
-  }}
-  .ic-li {{
-    font-size: 21px;
-    font-weight: 400;
-    line-height: 1.38;
-    color: #2a2520;
-    margin-bottom: 6px;
-  }}
 </style>
 </head>
 <body>
-  <div class="ic-photo" role="img" aria-label="City photo"></div>
-  <div class="ic-body">
-    <div class="ic-title">{city}, {country}</div>
-    <p class="ic-hook">{hook}</p>
-{famous_html}
-    <ul class="ic-ul">
-{li_html}
-    </ul>
-    <p class="ic-why">{why_visit}</p>
-  </div>
+  <div class="ic-photo-full" role="img" aria-label="City photo"></div>
 </body>
 </html>"""
 
 
 def build_photo_relax(data: dict, photo_b64: str) -> str:
-    sentences = data.get("sentences") or []
-    lines = []
-    for s in sentences[:4]:
-        lines.append(f'<p class="pr-line">{_safe_html(str(s))}</p>')
-    text_html = "\n".join(lines)
-
+    _ = data  # sentences: Telegram caption only
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
   body {{
     width: 1080px;
     height: 1920px;
     overflow: hidden;
-    font-family: 'Montserrat', sans-serif;
-    background: #ebe6df;
-    display: flex;
-    flex-direction: column;
+    background: #111;
   }}
-  .pr-photo {{
+  .pr-photo-full {{
     width: 1080px;
-    height: 1180px;
-    flex-shrink: 0;
+    height: 1920px;
     background-image: url('data:image/jpeg;base64,{photo_b64}');
     background-size: cover;
     background-position: center;
   }}
-  .pr-comment {{
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-    padding: 40px 48px 52px 48px;
-    background: #ebe6df;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 16px;
-  }}
-  .pr-line {{
-    font-size: 30px;
-    font-weight: 400;
-    line-height: 1.48;
-    color: #2a2520;
-    margin: 0;
-  }}
 </style>
 </head>
 <body>
-  <div class="pr-photo" role="img" aria-label="Nature photo"></div>
-  <div class="pr-comment">
-{text_html}
-  </div>
+  <div class="pr-photo-full" role="img" aria-label="Nature photo"></div>
 </body>
 </html>"""
 
@@ -3302,7 +3187,10 @@ def build_interesting_cities_caption(data: dict) -> str:
     if ff:
         blocks.append("\n".join(ff))
     if len(ss) == 3:
-        blocks.append("\n".join(f"{i}. {s}" for i, s in enumerate(ss, 1)))
+        blocks.append(
+            "What to see:\n"
+            + "\n".join(f"{i}. {s}" for i, s in enumerate(ss, 1))
+        )
     if why:
         blocks.append(why)
     return "\n\n".join(blocks)
@@ -3859,7 +3747,7 @@ Manual test: GET /test/{{rubric}} — одноразово запускає пу
   vocabulary_15        — 15 слів + IPA (кремова картка)
   daily_phrase         — фраза дня + приклад (en) + переклад (ua)
   situation_phrases    — 5 фраз (en/ua) для життєвої ситуації
-  photo_relax          — природа (фото) + 4 речення (en) під знімком
+  photo_relax          — природа: чисте фото PNG; 4 речення (en, рівень A2) у caption під медіа
 
 Пн–Пт — квізи (Telegram poll):
   grammar_quiz           (11:30)
@@ -3867,8 +3755,8 @@ Manual test: GET /test/{{rubric}} — одноразово запускає пу
   confusing_words_quiz   (14:30)
   prepositions_quiz      (16:00)
 
-Сб 16:00 Europe/Kyiv — PNG (картка як photo_relax):
-  interesting_cities   — місто + країна; hook → 1–2 факти → 3 локації → чому їхати (en A2, мінімалізм)
+Сб 16:00 Europe/Kyiv — чисте фото PNG + текст у caption:
+  interesting_cities   — місто/країна, hook, факти, «What to see:» + 3 пункти, чому їхати (en A2)
 
 Нд 16:00 — заплановано доробити (зараз заглушка, пост не генерується):
   travel_video
