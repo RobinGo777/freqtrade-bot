@@ -115,6 +115,8 @@ TRAVEL_VIDEO_LANDMARK_CATEGORIES: list[str] = [
 TRAVEL_VIDEO_MAIN_MAX_SEC = 58.0
 TRAVEL_VIDEO_BRAND_SEC = 2.5
 TRAVEL_VIDEO_PIPELINE_ATTEMPTS = 3
+# Pexels часто дає 4K — декод + буфери дають OOM на малих контейнерах; беремо ≤ цієї довгої сторони, якщо є
+TRAVEL_VIDEO_PEXELS_MAX_LONG_EDGE = 1920
 TRAVEL_VIDEO_NARRATION_WORDS_MAX = 160
 
 INTERESTING_CITIES_SENTENCES_MIN = 3
@@ -1739,39 +1741,61 @@ def _run_ffmpeg(args: list[str]) -> bool:
         return False
 
 
-async def download_video_bytes(url: str) -> bytes | None:
+async def download_url_to_file(url: str, dest_path: str) -> bool:
+    """Стрімінг у файл без повного буфера в RAM (важливо для OOM на великих MP4)."""
     try:
         async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.get(url, follow_redirects=True)
-            if resp.status_code == 200 and resp.content:
-                return resp.content
-            log.warning(f"⚠️ video download HTTP {resp.status_code}")
-            return None
+            async with client.stream("GET", url, follow_redirects=True) as resp:
+                if resp.status_code != 200:
+                    log.warning(f"⚠️ download HTTP {resp.status_code}")
+                    return False
+                with open(dest_path, "wb") as f:
+                    async for chunk in resp.aiter_bytes(chunk_size=65536):
+                        f.write(chunk)
+        ok = os.path.getsize(dest_path) > 0
+        if not ok:
+            try:
+                os.remove(dest_path)
+            except OSError:
+                pass
+        return ok
     except Exception as e:
-        log.error(f"❌ download_video_bytes: {e}")
-        return None
+        log.error(f"❌ download_url_to_file: {e}")
+        try:
+            if os.path.isfile(dest_path):
+                os.remove(dest_path)
+        except OSError:
+            pass
+        return False
 
 
 def _pick_pexels_video_url(videos: list) -> str | None:
-    best = None
-    best_score = -1
+    """Вертикаль ≥720p; уникаємо 4K як джерела (OOM): пріоритет long edge ≤ TRAVEL_VIDEO_PEXELS_MAX_LONG_EDGE."""
+    candidates: list[tuple[int, int, int, str]] = []  # area, h, w, link
     for v in videos:
         for vf in v.get("video_files") or []:
             w = int(vf.get("width") or 0)
             h = int(vf.get("height") or 0)
             link = vf.get("link")
-            if not link:
+            if not link or w < 1 or h < 1:
                 continue
-            # Пріоритет: вертикаль близько 9:16
-            score = 0
-            if h >= w and h >= 720:
-                score = h + (2000 if 1.2 <= h / max(w, 1) <= 2.5 else 0)
-            else:
-                score = h // 2
-            if score > best_score:
-                best_score = score
-                best = link
-    return best
+            if h < w:
+                continue
+            if h < 720:
+                continue
+            candidates.append((w * h, h, w, link))
+
+    if not candidates:
+        return None
+
+    cap = TRAVEL_VIDEO_PEXELS_MAX_LONG_EDGE
+    capped = [c for c in candidates if c[1] <= cap]
+    pool = capped if capped else candidates
+    if capped:
+        pool.sort(key=lambda t: t[1], reverse=True)
+        return pool[0][3]
+    pool.sort(key=lambda t: t[0])
+    return pool[0][3]
 
 
 async def fetch_pexels_videos(query: str) -> list[str]:
@@ -1818,7 +1842,8 @@ async def fetch_pixabay_videos(query: str) -> list[str]:
             out: list[str] = []
             for hit in data.get("hits") or []:
                 vids = hit.get("videos") or {}
-                for key in ("large", "medium", "small", "tiny"):
+                # medium first — large часто зайво важкий для RAM/OOM у контейнері
+                for key in ("medium", "small", "large", "tiny"):
                     block = vids.get(key)
                     if isinstance(block, dict) and block.get("url"):
                         out.append(block["url"])
@@ -1858,6 +1883,8 @@ def normalize_clip_to_vertical_9_16(src: str, dst: str, max_sec: float) -> bool:
     args = [
         "ffmpeg",
         "-y",
+        "-threads",
+        "2",
         "-i",
         src,
         "-vf",
@@ -2093,6 +2120,8 @@ def final_encode_for_telegram(src_path: str, dst_path: str) -> bool:
         [
             "ffmpeg",
             "-y",
+            "-threads",
+            "2",
             "-i",
             src_path,
             "-c:v",
@@ -2252,6 +2281,8 @@ async def branding_clip_to_mp4(png_path: str, out_mp4: str, duration_sec: float)
     args = [
         "ffmpeg",
         "-y",
+        "-threads",
+        "2",
         "-loop",
         "1",
         "-i",
@@ -2382,13 +2413,10 @@ async def build_travel_video_main_from_stock(
     for i, u in enumerate(urls):
         if total >= TRAVEL_VIDEO_MAIN_MAX_SEC:
             break
-        raw = await download_video_bytes(u)
-        if not raw:
-            continue
         raw_path = os.path.join(tmpdir, f"raw_{i}.mp4")
         npath = os.path.join(tmpdir, f"norm_{i}.mp4")
-        with open(raw_path, "wb") as f:
-            f.write(raw)
+        if not await download_url_to_file(u, raw_path):
+            continue
         if not normalize_clip_to_vertical_9_16(
             raw_path, npath, TRAVEL_VIDEO_MAIN_MAX_SEC
         ):
@@ -2460,11 +2488,9 @@ async def publish_travel_video(rubric: str, redis_client: UpstashRedis):
                 music_path = None
                 mu = await fetch_pixabay_music_url()
                 if mu:
-                    mb = await download_video_bytes(mu)
-                    if mb:
-                        music_path = os.path.join(tmpdir, "music.mp3")
-                        with open(music_path, "wb") as f:
-                            f.write(mb)
+                    music_path = os.path.join(tmpdir, "music.mp3")
+                    if not await download_url_to_file(mu, music_path):
+                        music_path = None
 
                 mixed_mp3 = os.path.join(tmpdir, "mixed.mp3")
                 if not mix_voice_and_music(voice_mp3, music_path, mixed_mp3):
