@@ -1826,7 +1826,10 @@ def ffprobe_duration_seconds(path: str) -> float:
 
 def _run_ffmpeg(args: list[str]) -> bool:
     try:
-        r = subprocess.run(args, capture_output=True, text=True, timeout=600)
+        # Для слабкого CPU travel_video нормалізація/енкодування може займати довше.
+        # Якщо платформа має жорсткий ліміт часу на request — все одно краще, щоб цей timeout
+        # був не меншим за реальні потреби FFmpeg.
+        r = subprocess.run(args, capture_output=True, text=True, timeout=1200)
         if r.returncode != 0:
             log.error(f"❌ ffmpeg failed: {r.stderr[:800]}")
             return False
@@ -1980,12 +1983,15 @@ async def fetch_pixabay_music_url() -> str | None:
 
 
 def normalize_clip_to_vertical_9_16(src: str, dst: str, max_sec: float) -> bool:
-    vf = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920"
+    # Полегшуємо роботу для слабких CPU:
+    # - fps cap зменшує кількість кадрів для енкоду
+    # - ultrafast + вищий CRF зменшують CPU
+    vf = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30"
     args = [
         FFMPEG_BIN,
         "-y",
         "-threads",
-        "2",
+        "1",
         "-i",
         src,
         "-vf",
@@ -1995,9 +2001,9 @@ def normalize_clip_to_vertical_9_16(src: str, dst: str, max_sec: float) -> bool:
         "-c:v",
         "libx264",
         "-preset",
-        "fast",
+        "ultrafast",
         "-crf",
-        "26",
+        "30",
         "-an",
         "-movflags",
         "+faststart",
@@ -2222,15 +2228,15 @@ def final_encode_for_telegram(src_path: str, dst_path: str) -> bool:
             FFMPEG_BIN,
             "-y",
             "-threads",
-            "2",
+            "1",
             "-i",
             src_path,
             "-c:v",
             "libx264",
             "-preset",
-            "fast",
+            "ultrafast",
             "-crf",
-            "28",
+            "30",
             "-maxrate",
             "2M",
             "-bufsize",
@@ -2383,7 +2389,7 @@ async def branding_clip_to_mp4(png_path: str, out_mp4: str, duration_sec: float)
         FFMPEG_BIN,
         "-y",
         "-threads",
-        "2",
+        "1",
         "-loop",
         "1",
         "-i",
@@ -2397,9 +2403,9 @@ async def branding_clip_to_mp4(png_path: str, out_mp4: str, duration_sec: float)
         "-c:v",
         "libx264",
         "-preset",
-        "fast",
+        "ultrafast",
         "-crf",
-        "26",
+        "30",
         "-pix_fmt",
         "yuv420p",
         "-c:a",
