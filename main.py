@@ -184,11 +184,12 @@ TRAVEL_VIDEO_LANDMARK_CATEGORIES: list[str] = [
     "Unique or extreme places",
 ]
 TRAVEL_VIDEO_MAIN_MAX_SEC = 34.0
-TRAVEL_VIDEO_BRAND_SEC = 2.5
+TRAVEL_VIDEO_BRAND_SEC = 3.0
 TRAVEL_VIDEO_PIPELINE_ATTEMPTS = 3
 # Pexels часто дає 4K — декод + буфери дають OOM на малих контейнерах; беремо ≤ цієї довгої сторони, якщо є
 TRAVEL_VIDEO_PEXELS_MAX_LONG_EDGE = 1920
 TRAVEL_VIDEO_NARRATION_WORDS_MAX = 160
+TRAVEL_VIDEO_NARRATION_WORDS_MIN = 45
 TRAVEL_VIDEO_SINGLE_CLIP_MIN_SEC = 24.0
 TRAVEL_VIDEO_SINGLE_CLIP_MAX_SEC = 42.0
 
@@ -2149,16 +2150,18 @@ def mix_voice_and_music(voice_mp3: str, music_path: str | None, out_path: str) -
     if not music_path or not os.path.isfile(music_path):
         shutil.copy(voice_mp3, out_path)
         return True
-    # Тиха музика; amix duration=first = довжина голосу
+    # Петляємо музику, щоб не закінчувалась раніше голосу.
     args = [
         FFMPEG_BIN,
         "-y",
         "-i",
         voice_mp3,
+        "-stream_loop",
+        "-1",
         "-i",
         music_path,
         "-filter_complex",
-        "[1:a]volume=0.12[m];[0:a][m]amix=inputs=2:duration=first:dropout_transition=0[aout]",
+        "[1:a]volume=0.20[m];[0:a][m]amix=inputs=2:duration=first:dropout_transition=0[aout]",
         "-map",
         "[aout]",
         "-c:a",
@@ -2344,7 +2347,7 @@ BRANDING_ENDCARD_HTML = """<!DOCTYPE html>
     font-family: Arial, Helvetica, sans-serif;
   }}
   .card {{
-    background: #1c1c1e;
+    background: #141416;
     border-radius: 28px;
     padding: 72px 56px;
     text-align: center;
@@ -2362,13 +2365,13 @@ BRANDING_ENDCARD_HTML = """<!DOCTYPE html>
   }}
   .wordmark {{
     font-family: Georgia, "Times New Roman", serif;
-    font-size: 56px;
-    font-weight: 300;
-    letter-spacing: 6px;
-    color: #f5f5f7;
+    font-size: 68px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    color: #ffffff;
     line-height: 1.15;
   }}
-  .wordmark span {{ color: #c9a84c; font-style: italic; }}
+  .wordmark span {{ color: #f2c14e; font-style: italic; }}
   .divider {{
     width: 120px;
     height: 2px;
@@ -2376,11 +2379,11 @@ BRANDING_ENDCARD_HTML = """<!DOCTYPE html>
     margin: 28px auto;
   }}
   .tagline {{
-    font-size: 11px;
-    letter-spacing: 8px;
+    font-size: 22px;
+    letter-spacing: 3px;
     text-transform: uppercase;
-    color: #8e8e93;
-    margin-top: 8px;
+    color: #f4f4f5;
+    margin-top: 14px;
   }}
 </style>
 </head>
@@ -2471,18 +2474,12 @@ def validate_travel_video_landmark_bundle(data: dict, banned: set[str]) -> tuple
     country = str(data.get("country", "")).strip()
     cat = str(data.get("category", "")).strip()
     stock_q = str(data.get("stock_query", "")).strip()
-    narr = str(data.get("narration", "")).strip()
     if not lm or not country:
         return False, "empty landmark or country"
     if cat not in TRAVEL_VIDEO_LANDMARK_CATEGORIES:
         return False, f"bad category: {cat}"
     if not stock_q:
         return False, "empty stock_query"
-    if not narr:
-        return False, "empty narration"
-    words = narr.split()
-    if len(words) < 40 or len(words) > TRAVEL_VIDEO_NARRATION_WORDS_MAX:
-        return False, f"narration word count {len(words)}"
     pk = _travel_video_place_key(lm, country)
     if pk in banned:
         return False, "place banned"
@@ -2516,6 +2513,44 @@ async def generate_travel_video_landmark_bundle(
         )
         hist = hist + [f"reject:{reason}"]
     raise RuntimeError(f"travel_video_landmark failed: {last_reason}")
+
+
+def validate_travel_video_narration(data: dict) -> tuple[bool, str]:
+    narration = str(data.get("narration", "")).strip()
+    if not narration:
+        return False, "empty narration"
+    words = narration.split()
+    if len(words) < TRAVEL_VIDEO_NARRATION_WORDS_MIN or len(words) > TRAVEL_VIDEO_NARRATION_WORDS_MAX:
+        return False, f"narration word count {len(words)}"
+    return True, "ok"
+
+
+async def generate_travel_video_narration(
+    landmark: str, country: str, category: str, target_sec: float, max_attempts: int = 3
+) -> str:
+    extra = {
+        "landmark_name": landmark,
+        "country": country,
+        "category": category,
+        "target_duration_sec": round(target_sec, 1),
+        "target_words_min": max(40, int(target_sec * 1.9)),
+        "target_words_max": min(TRAVEL_VIDEO_NARRATION_WORDS_MAX, int(target_sec * 2.8)),
+    }
+    hist: list[str] = []
+    last_reason = "unknown"
+    for attempt in range(1, max_attempts + 1):
+        data = await generate_content("travel_video_narration", hist, extra)
+        ok, reason = validate_travel_video_narration(data)
+        if ok:
+            text = str(data.get("narration", "")).strip()
+            if attempt > 1:
+                log.info(f"✅ travel_video_narration validated on retry #{attempt}")
+            return text
+        last_reason = reason
+        preview = str(data.get("narration", "")).strip()[:120]
+        log.warning(f"⚠️ travel_video_narration reject attempt {attempt}/{max_attempts}: {reason}")
+        hist = hist + [preview or f"reject:{reason}"]
+    raise RuntimeError(f"travel_video_narration failed: {last_reason}")
 
 
 async def build_travel_video_main_from_stock(
@@ -2623,14 +2658,25 @@ async def publish_travel_video(rubric: str, redis_client: UpstashRedis):
 
                 lm = str(bundle.get("landmark_name", "")).strip()
                 country = str(bundle.get("country", "")).strip()
+                category = str(bundle.get("category", "")).strip()
                 stock_q = str(bundle.get("stock_query", "")).strip()
-                narr = str(bundle.get("narration", "")).strip()
 
                 main_seg = await build_travel_video_main_from_stock(
                     stock_q, lm, country, tmpdir
                 )
                 if not main_seg:
                     log.warning(f"⚠️ [NF] travel_video no stock video cycle {cycle}")
+                    continue
+
+                main_duration = ffprobe_duration_seconds(main_seg)
+                if main_duration <= 0:
+                    main_duration = TRAVEL_VIDEO_MAIN_MAX_SEC
+                try:
+                    narr = await generate_travel_video_narration(
+                        lm, country, category, main_duration, max_attempts=3
+                    )
+                except RuntimeError as e:
+                    log.warning(f"⚠️ [NF] travel_video narration failed cycle {cycle}: {e}")
                     continue
 
                 voice_mp3 = os.path.join(tmpdir, "voice.mp3")
@@ -3097,14 +3143,35 @@ Return ONLY valid JSON, no markdown, no extra text:
   "landmark_name": "English name of the landmark",
   "country": "English name of the country",
   "category": "one of the allowed category strings above (exact match)",
-  "stock_query": "English keywords for stock VIDEO search (landmark + country + vertical/portrait; no quotes)",
-  "narration": "Full English voiceover script for A2 learners: about 5–8 short sentences, 70–{TRAVEL_VIDEO_NARRATION_WORDS_MAX} words total, present simple mostly, simple vocabulary, British English style, no lists, no stage directions, no quotes, no emojis."
+  "stock_query": "English keywords for stock VIDEO search (landmark + country + vertical/portrait; no quotes)"
 }}
 Rules:
 - English ONLY in all fields.
-- "narration" is spoken English only — no Ukrainian, no Russian.
 - Be factually plausible; do not invent dangerous or offensive content.
 - Vary continents and landmark types over time when possible."""
+
+    if rubric == "travel_video_narration":
+        landmark = str(extra.get("landmark_name", "")).strip()
+        country = str(extra.get("country", "")).strip()
+        category = str(extra.get("category", "")).strip()
+        target_sec = float(extra.get("target_duration_sec", TRAVEL_VIDEO_MAIN_MAX_SEC))
+        tw_min = int(extra.get("target_words_min", TRAVEL_VIDEO_NARRATION_WORDS_MIN))
+        tw_max = int(extra.get("target_words_max", TRAVEL_VIDEO_NARRATION_WORDS_MAX))
+        return f"""You are an English teacher writing a voiceover for A2 learners.
+Landmark: {landmark}
+Country: {country}
+Category: {category}
+Target video duration: about {target_sec:.1f} seconds.
+Return ONLY valid JSON, no markdown, no extra text:
+{{
+  "narration": "5-8 short spoken English sentences for voiceover"
+}}
+Rules:
+- Keep narration natural and simple (A2), present simple mostly.
+- Word count MUST be between {tw_min} and {tw_max}.
+- Speakable pacing: short clauses, clear pauses, no lists.
+- No emojis, no quotes, no stage directions.
+- English only."""
 
     raise ValueError(f"Unknown rubric: {rubric}")
 
@@ -3440,6 +3507,8 @@ async def generate_content(rubric: str, history: list, extra: dict = None) -> di
         max_tok = 1200
     elif rubric == "travel_video_landmark":
         max_tok = 2200
+    elif rubric == "travel_video_narration":
+        max_tok = 1200
     else:
         max_tok = 1000
     for model in GEMINI_MODELS:
