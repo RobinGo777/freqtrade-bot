@@ -140,8 +140,8 @@ def _media_executable_ok(cmd: str) -> bool:
 # Після верифікації картки замініть на кращі моделі
 # Замініть на актуальні моделі після верифікації картки
 GEMINI_MODELS = [
-    "gemini-2.5-flash",    # 500 RPD — основна
-    "gemini-2.5-flash-lite",            # 20 RPD — запасна
+    "gemini-2.5-flash-lite",    # 500 RPD — основна
+    "gemini-2.5-flash",            # 20 RPD — запасна
     "gemini-3.1-flash-lite-preview",                 # 20 RPD — запасна
     "gemini-3-flash-previe",             # модель 3 — запасна
 ]
