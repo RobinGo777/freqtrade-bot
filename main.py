@@ -140,10 +140,10 @@ def _media_executable_ok(cmd: str) -> bool:
 # Після верифікації картки замініть на кращі моделі
 # Замініть на актуальні моделі після верифікації картки
 GEMINI_MODELS = [
-    "gemini-3.1-flash-lite-preview",    # 500 RPD — основна
+    "gemini-2.5-flash",    # 500 RPD — основна
     "gemini-2.5-flash-lite",            # 20 RPD — запасна
-    "gemini-2.5-flash",                 # 20 RPD — запасна
-    "gemini-2.0-flash-lite",             # модель 3 — запасна
+    "gemini-3.1-flash-lite-preview",                 # 20 RPD — запасна
+    "gemini-3-flash-previe",             # модель 3 — запасна
 ]
 
 # ──────────────────────────────────────────────
@@ -1834,7 +1834,10 @@ def _run_ffmpeg(args: list[str]) -> bool:
         # був не меншим за реальні потреби FFmpeg.
         r = subprocess.run(args, capture_output=True, text=True, timeout=1200)
         if r.returncode != 0:
-            log.error(f"❌ ffmpeg failed: {r.stderr[:800]}")
+            err = (r.stderr or "").strip()
+            # Для ffmpeg надійніше дивитись хвіст stderr (реальна причина зазвичай в кінці, не в банері).
+            tail = err[-1600:] if err else "(empty stderr)"
+            log.error(f"❌ ffmpeg failed (code={r.returncode}) cmd={args[0]!r}: {tail}")
             return False
         return True
     except FileNotFoundError:
@@ -1975,6 +1978,8 @@ async def fetch_pixabay_music_url() -> str | None:
                 }
                 resp = await client.get(url, params=params)
                 if resp.status_code != 200:
+                    if resp.status_code == 403:
+                        log.warning("⚠️ Pixabay audio HTTP 403 — music disabled for this run (key/plan/permission)")
                     continue
                 data = resp.json()
                 for hit in data.get("hits") or []:
@@ -2288,6 +2293,9 @@ def final_encode_for_telegram(
             "aac",
             "-b:a",
             "96k",
+            "-pix_fmt",
+            "yuv420p",
+            "-shortest",
             "-movflags",
             "+faststart",
             dst_path,
@@ -2775,8 +2783,12 @@ async def publish_travel_video(rubric: str, redis_client: UpstashRedis):
                     log.warning(f"⚠️ [NF] travel_video watermark render failed cycle {cycle}: {e}")
 
                 if not final_encode_for_telegram(muxed, final_path, wm_png):
-                    log.warning(f"⚠️ [NF] travel_video final encode failed cycle {cycle}")
-                    continue
+                    log.warning(
+                        f"⚠️ [NF] travel_video final encode with watermark failed cycle {cycle} — retrying without watermark"
+                    )
+                    if not final_encode_for_telegram(muxed, final_path, None):
+                        log.warning(f"⚠️ [NF] travel_video final encode failed cycle {cycle}")
+                        continue
 
                 sz_mb = os.path.getsize(final_path) / (1024 * 1024)
                 log.info(f"📦 travel_video final size: {sz_mb:.2f} MB")
