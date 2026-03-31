@@ -140,10 +140,10 @@ def _media_executable_ok(cmd: str) -> bool:
 # Після верифікації картки замініть на кращі моделі
 # Замініть на актуальні моделі після верифікації картки
 GEMINI_MODELS = [
-    "gemini-2.5-flash",    # 500 RPD — основна
+    "gemini-3.1-flash-lite-preview",    # 500 RPD — основна
     "gemini-2.5-flash-lite",            # 20 RPD — запасна
-    "gemini-3.1-flash-lite-preview",                 # 20 RPD — запасна
-    "gemini-3-flash-previe",             # модель 3 — запасна
+    "gemini-2.5-flash",                 # 20 RPD — запасна
+    "gemini-2.0-flash-lite",             # модель 3 — запасна
 ]
 
 # ──────────────────────────────────────────────
@@ -192,9 +192,17 @@ TRAVEL_VIDEO_NARRATION_WORDS_MAX = 160
 TRAVEL_VIDEO_NARRATION_WORDS_MIN = 45
 TRAVEL_VIDEO_SINGLE_CLIP_MIN_SEC = 24.0
 TRAVEL_VIDEO_SINGLE_CLIP_MAX_SEC = 42.0
+TRAVEL_VIDEO_STOCK_URLS_MAX_TRY = 12
+# Одне завантажене відео (склейки в коді немає). Довгі файли на стоках часто — монтаж зі зміною сцен;
+# обмежуємо тривалість джерела, щоб частіше брати короткі «однішотові» ролики 20–35 с.
+TRAVEL_VIDEO_STOCK_SOURCE_MIN_SEC = 20.0
+TRAVEL_VIDEO_STOCK_SOURCE_MAX_SEC = 35.0
+TRAVEL_VIDEO_STOCK_SOURCE_RELAX_MIN_SEC = 18.0
+TRAVEL_VIDEO_STOCK_SOURCE_RELAX_MAX_SEC = 42.0
+TRAVEL_VIDEO_QUERY_VARIANTS_MAX = 6
 
 INTERESTING_CITIES_SENTENCES_MIN = 3
-INTERESTING_CITIES_SENTENCES_MAX = 5
+INTERESTING_CITIES_SENTENCES_MAX = 4
 
 PLACEHOLDER_RUBRICS = frozenset()
 
@@ -1645,6 +1653,88 @@ async def fetch_photo_unsplash(query: str, use_topics: bool = True, pick_random:
         return None
 
 
+def _unsplash_city_photo_is_bad(photo: dict) -> bool:
+    """Відсікає портрети/selfie/fashion для interesting_cities."""
+    bad_words = {
+        "selfie", "portrait", "model", "fashion", "makeup", "cosmetic", "studio",
+        "mirror", "face", "wedding", "outfit", "clothes", "shopping",
+    }
+    city_words = {
+        "city", "cityscape", "skyline", "street", "urban", "architecture", "building",
+        "buildings", "old town", "historic", "landmark", "cathedral", "bridge",
+        "harbor", "harbour", "waterfront", "square", "downtown", "tower", "palace",
+        "temple", "mosque", "church", "monument", "castle", "ruins", "museum",
+        "travel", "tourism", "tourist", "view", "panorama", "aerial", "facade",
+        "plaza", "market", "district", "quarter", "promenade", "canal",
+    }
+    parts: list[str] = []
+    for key in ("alt_description", "description"):
+        val = photo.get(key)
+        if isinstance(val, str) and val.strip():
+            parts.append(val)
+    tags = photo.get("tags")
+    if isinstance(tags, list):
+        for t in tags:
+            if isinstance(t, dict):
+                tv = t.get("title")
+                if isinstance(tv, str) and tv.strip():
+                    parts.append(tv)
+            elif isinstance(t, str) and t.strip():
+                parts.append(t)
+    text = _normalize_text(" ".join(parts))
+    if not text:
+        return False  # no metadata → don't discard, let it through
+    if any(w in text for w in bad_words):
+        return True
+    return False
+
+
+async def fetch_photo_unsplash_city_strict(query: str) -> str | None:
+    """Top міський кадр з Unsplash, без портретно-fashion семантики."""
+    if not UNSPLASH_ACCESS_KEY:
+        return None
+    try:
+        url = "https://api.unsplash.com/search/photos"
+        params = {
+            "query": query,
+            "orientation": "landscape",
+            "content_filter": "high",
+            "per_page": 30,
+            "order_by": "relevant",
+        }
+        headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(url, params=params, headers=headers)
+            log.info(f"📷 Unsplash city-strict: status={resp.status_code} query='{query}'")
+            if resp.status_code != 200:
+                return None
+            data = resp.json()
+            photos = data.get("results", []) or []
+            if not photos:
+                return None
+
+            filtered = [p for p in photos if not _unsplash_city_photo_is_bad(p)]
+            pool = filtered if filtered else photos
+            best = max(
+                pool[:15],
+                key=lambda p: (
+                    int(p.get("likes", 0)),
+                    int(p.get("width", 0)) * int(p.get("height", 0)),
+                ),
+            )
+            photo_url = str((best.get("urls") or {}).get("regular") or "").strip()
+            if not photo_url:
+                return None
+            log.info(
+                f"✅ Unsplash city-strict photo: likes={best.get('likes', 0)} "
+                f"filtered={len(filtered)}/{len(photos)} url={photo_url[:60]}"
+            )
+            return photo_url
+    except Exception as e:
+        log.warning(f"⚠️ Unsplash city-strict exception: {e}")
+        return None
+
+
 async def fetch_photo_pexels(query: str, pick_random: bool = False) -> str | None:
     if not PEXELS_API_KEY:
         log.warning("⚠️ PEXELS_API_KEY not set")
@@ -1666,7 +1756,17 @@ async def fetch_photo_pexels(query: str, pick_random: bool = False) -> str | Non
                 photos = data.get("photos", [])
                 if photos:
                     pool = photos[:10] if pick_random else photos[:5]
-                    photo = random.choice(pool)
+                    if pick_random:
+                        photo = random.choice(pool)
+                    else:
+                        # Топ-кадр: пріоритет лайкам, далі — трохи детермінізму за розміром.
+                        photo = max(
+                            pool,
+                            key=lambda p: (
+                                int(p.get("likes", 0)),
+                                int(p.get("width", 0)) * int(p.get("height", 0)),
+                            ),
+                        )
                     photo_url = photo["src"]["large"]
                     log.info(f"✅ Pexels photo found: {photo_url[:80]}")
                     return photo_url
@@ -1704,7 +1804,19 @@ async def fetch_photo_pixabay(query: str, pick_random: bool = False) -> str | No
                 hits = data.get("hits", [])
                 if hits:
                     pool = hits[:10] if pick_random else hits[:5]
-                    photo = random.choice(pool)
+                    if pick_random:
+                        photo = random.choice(pool)
+                    else:
+                        # Топ-кадр: більше interactions (likes+downloads+views).
+                        photo = max(
+                            pool,
+                            key=lambda h: (
+                                int(h.get("likes", 0))
+                                + int(h.get("downloads", 0))
+                                + int(h.get("views", 0)),
+                                int(h.get("imageWidth", 0)) * int(h.get("imageHeight", 0)),
+                            ),
+                        )
                     photo_url = photo["largeImageURL"]
                     log.info(f"✅ Pixabay photo found: {photo_url[:80]}")
                     return photo_url
@@ -1880,8 +1992,9 @@ async def download_url_to_file(url: str, dest_path: str) -> bool:
 
 
 def _pick_pexels_video_url(videos: list) -> str | None:
-    """Вертикаль ≥720p; уникаємо 4K як джерела (OOM): пріоритет long edge ≤ TRAVEL_VIDEO_PEXELS_MAX_LONG_EDGE."""
-    candidates: list[tuple[int, int, int, str]] = []  # area, h, w, link
+    """Best quality video file ≥ 720p; уникаємо 4K (OOM): пріоритет long edge ≤ TRAVEL_VIDEO_PEXELS_MAX_LONG_EDGE.
+    Не фільтруємо за орієнтацією — ffmpeg сам кропить у 9:16."""
+    candidates: list[tuple[int, int, int, str]] = []  # area, max_edge, min_edge, link
     for v in videos:
         for vf in v.get("video_files") or []:
             w = int(vf.get("width") or 0)
@@ -1889,11 +2002,11 @@ def _pick_pexels_video_url(videos: list) -> str | None:
             link = vf.get("link")
             if not link or w < 1 or h < 1:
                 continue
-            if h < w:
+            long_edge = max(w, h)
+            short_edge = min(w, h)
+            if short_edge < 720:
                 continue
-            if h < 720:
-                continue
-            candidates.append((w * h, h, w, link))
+            candidates.append((w * h, long_edge, short_edge, link))
 
     if not candidates:
         return None
@@ -1901,19 +2014,23 @@ def _pick_pexels_video_url(videos: list) -> str | None:
     cap = TRAVEL_VIDEO_PEXELS_MAX_LONG_EDGE
     capped = [c for c in candidates if c[1] <= cap]
     pool = capped if capped else candidates
-    if capped:
-        pool.sort(key=lambda t: t[1], reverse=True)
-        return pool[0][3]
-    pool.sort(key=lambda t: t[0])
+    # Prefer highest resolution within cap
+    pool.sort(key=lambda t: t[0], reverse=True)
     return pool[0][3]
 
 
-async def fetch_pexels_videos(query: str) -> list[str]:
+async def fetch_pexels_videos(
+    query: str,
+    *,
+    min_duration_sec: float | None = None,
+    max_duration_sec: float | None = None,
+    orientation: str = "landscape",
+) -> list[str]:
     if not PEXELS_API_KEY:
         return []
     url = "https://api.pexels.com/videos/search"
     headers = {"Authorization": PEXELS_API_KEY}
-    params = {"query": query, "orientation": "portrait", "per_page": 15}
+    params = {"query": query, "orientation": orientation, "per_page": 25, "size": "medium"}
     try:
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.get(url, params=params, headers=headers)
@@ -1923,6 +2040,11 @@ async def fetch_pexels_videos(query: str) -> list[str]:
             data = resp.json()
             out: list[str] = []
             for v in data.get("videos") or []:
+                dur = float(v.get("duration") or 0)
+                if min_duration_sec is not None and dur < min_duration_sec:
+                    continue
+                if max_duration_sec is not None and dur > max_duration_sec:
+                    continue
                 u = _pick_pexels_video_url([v])
                 if u:
                     out.append(u)
@@ -1932,62 +2054,75 @@ async def fetch_pexels_videos(query: str) -> list[str]:
         return []
 
 
-async def fetch_pixabay_videos(query: str) -> list[str]:
+async def fetch_pixabay_videos(
+    query: str,
+    *,
+    min_duration_sec: float | None = None,
+    max_duration_sec: float | None = None,
+) -> list[str]:
     if not PIXABAY_API_KEY:
         return []
     url = "https://pixabay.com/api/videos/"
-    params = {
+
+    async def _fetch(params: dict) -> list[str]:
+        out: list[str] = []
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(url, params=params)
+                if resp.status_code != 200:
+                    log.warning(f"⚠️ Pixabay videos HTTP {resp.status_code}")
+                    return out
+                data = resp.json()
+                for hit in data.get("hits") or []:
+                    dur = float(hit.get("duration") or 0)
+                    if min_duration_sec is not None and dur < min_duration_sec:
+                        continue
+                    if max_duration_sec is not None and dur > max_duration_sec:
+                        continue
+                    vids = hit.get("videos") or {}
+                    for key in ("medium", "small", "large", "tiny"):
+                        block = vids.get(key)
+                        if isinstance(block, dict) and block.get("url"):
+                            out.append(block["url"])
+                            break
+        except Exception as e:
+            log.error(f"❌ fetch_pixabay_videos: {e}")
+        return out
+
+    # First try with travel category filter for more relevant clips
+    params_travel = {
         "key": PIXABAY_API_KEY,
         "q": query,
-        "per_page": 15,
+        "per_page": 25,
         "safesearch": "true",
+        "category": "travel",
+        "order": "popular",
     }
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.get(url, params=params)
-            if resp.status_code != 200:
-                log.warning(f"⚠️ Pixabay videos HTTP {resp.status_code}")
-                return []
-            data = resp.json()
-            out: list[str] = []
-            for hit in data.get("hits") or []:
-                vids = hit.get("videos") or {}
-                # medium first — large часто зайво важкий для RAM/OOM у контейнері
-                for key in ("medium", "small", "large", "tiny"):
-                    block = vids.get(key)
-                    if isinstance(block, dict) and block.get("url"):
-                        out.append(block["url"])
-                        break
-            return out
-    except Exception as e:
-        log.error(f"❌ fetch_pixabay_videos: {e}")
-        return []
+    out = await _fetch(params_travel)
+    if out:
+        return out
+
+    # Fallback: no category restriction
+    params_wide = {
+        "key": PIXABAY_API_KEY,
+        "q": query,
+        "per_page": 25,
+        "safesearch": "true",
+        "order": "popular",
+    }
+    return await _fetch(params_wide)
+
+
+_PIXABAY_AUDIO_403_LOGGED = False
 
 
 async def fetch_pixabay_music_url() -> str | None:
-    if not PIXABAY_API_KEY:
-        return None
-    url = "https://pixabay.com/api/audio/"
-    try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            for q in ("calm ambient instrumental", "ambient instrumental", "cinematic ambient"):
-                params = {
-                    "key": PIXABAY_API_KEY,
-                    "q": q,
-                    "per_page": 10,
-                }
-                resp = await client.get(url, params=params)
-                if resp.status_code != 200:
-                    if resp.status_code == 403:
-                        log.warning("⚠️ Pixabay audio HTTP 403 — music disabled for this run (key/plan/permission)")
-                    continue
-                data = resp.json()
-                for hit in data.get("hits") or []:
-                    au = hit.get("audioURL") or hit.get("previewURL") or hit.get("audio")
-                    if au:
-                        return str(au)
-    except Exception as e:
-        log.warning(f"⚠️ fetch_pixabay_music_url: {e}")
+    """Music API вимкнено: поточний пайплайн працює voice-only."""
+    global _PIXABAY_AUDIO_403_LOGGED
+    if not _PIXABAY_AUDIO_403_LOGGED:
+        # Один інфо-лог за процес замість постійних 403 warning.
+        _PIXABAY_AUDIO_403_LOGGED = True
+        log.info("🔇 Pixabay audio API disabled (voice-only mode)")
     return None
 
 
@@ -2549,6 +2684,11 @@ def validate_travel_video_landmark_bundle(data: dict, banned: set[str]) -> tuple
         return False, f"bad category: {cat}"
     if not stock_q:
         return False, "empty stock_query"
+    wq = stock_q.split()
+    if len(wq) < 5:
+        return False, "stock_query too short (need 5+ words)"
+    if len(wq) > 32:
+        return False, "stock_query too long"
     pk = _travel_video_place_key(lm, country)
     if pk in banned:
         return False, "place banned"
@@ -2622,34 +2762,131 @@ async def generate_travel_video_narration(
     raise RuntimeError(f"travel_video_narration failed: {last_reason}")
 
 
-async def build_travel_video_main_from_stock(
+async def _fetch_pexels_videos_travel_candidates(query: str) -> list[str]:
+    """Пріоритет: джерело 20–35 с (один файл = менше «монтажних» нарізок), далі послаблення.
+    Спочатку landscape (більше гарних пам'яткових знімків), потім portrait fallback."""
+    ranges: list[tuple[float | None, float | None]] = [
+        (TRAVEL_VIDEO_STOCK_SOURCE_MIN_SEC, TRAVEL_VIDEO_STOCK_SOURCE_MAX_SEC),
+        (TRAVEL_VIDEO_STOCK_SOURCE_RELAX_MIN_SEC, TRAVEL_VIDEO_STOCK_SOURCE_RELAX_MAX_SEC),
+        (None, None),
+    ]
+    for orientation in ("landscape", "portrait"):
+        for lo, hi in ranges:
+            urls = await fetch_pexels_videos(query, min_duration_sec=lo, max_duration_sec=hi, orientation=orientation)
+            if urls:
+                dur_label = f"{lo:.0f}–{hi:.0f}s" if lo is not None else "any duration"
+                log.info(
+                    f"🎬 travel_video Pexels [{orientation}]: {len(urls)} hits for {query!r} ({dur_label})"
+                )
+                return urls
+    return []
+
+
+async def _fetch_pixabay_videos_travel_candidates(query: str) -> list[str]:
+    ranges: list[tuple[float | None, float | None]] = [
+        (TRAVEL_VIDEO_STOCK_SOURCE_MIN_SEC, TRAVEL_VIDEO_STOCK_SOURCE_MAX_SEC),
+        (TRAVEL_VIDEO_STOCK_SOURCE_RELAX_MIN_SEC, TRAVEL_VIDEO_STOCK_SOURCE_RELAX_MAX_SEC),
+        (None, None),
+    ]
+    for lo, hi in ranges:
+        urls = await fetch_pixabay_videos(query, min_duration_sec=lo, max_duration_sec=hi)
+        if urls:
+            if lo is not None:
+                log.info(
+                    f"🎬 travel_video Pixabay: {len(urls)} hits for {query!r} "
+                    f"(source duration {lo:.0f}–{hi:.0f}s)"
+                )
+            else:
+                log.info(
+                    f"🎬 travel_video Pixabay: {len(urls)} hits for {query!r} (no duration filter — fallback)"
+                )
+            return urls
+    return []
+
+
+async def _fetch_pexels_then_pixabay(q: str) -> list[str]:
+    urls = await _fetch_pexels_videos_travel_candidates(q)
+    if not urls:
+        urls = await _fetch_pixabay_videos_travel_candidates(q)
+    return urls
+
+
+def _travel_video_query_variants(stock_query: str, landmark: str, country: str) -> list[tuple[str, str]]:
+    """Повертає пріоритетні запити для релевантного відео по landmarks.
+
+    Стратегія: спочатку точний Gemini-запит (містить назву пам'ятки + конкретний візуал),
+    далі — спрощення до назви пам'ятки, потім до міста/країни.
+    """
+    lm = " ".join((landmark or "").strip().split())
+    ct = " ".join((country or "").strip().split())
+    sq = " ".join((stock_query or "").strip().split())
+    base = " ".join(x for x in (lm, ct) if x).strip()
+    if not base:
+        return []
+
+    variants: list[tuple[str, str]] = []
+
+    # 1. Exact Gemini stock_query (most specific — landmark + scene details)
+    if sq and sq.lower() != base.lower():
+        variants.append((sq, "gemini_exact"))
+
+    # 2. Landmark + country — clean, no extra words (stock APIs often match best this way)
+    variants.append((base, "landmark_country"))
+
+    # 3. Landmark + country + cinematic cue
+    variants.append((f"{base} cinematic", "landmark_cinematic"))
+
+    # 4. Just the landmark name (without country) — helps when country is in landmark name
+    if lm and lm.lower() != base.lower():
+        variants.append((lm, "landmark_only"))
+
+    # 5. Country + aerial/drone — good fallback for when landmark search is dry
+    if ct:
+        variants.append((f"{ct} landmark aerial", "country_aerial"))
+        variants.append((f"{ct} travel", "country_travel"))
+
+    out: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for q, tag in variants:
+        norm = " ".join(q.lower().split())
+        if not norm or norm in seen:
+            continue
+        seen.add(norm)
+        out.append((q, tag))
+        if len(out) >= TRAVEL_VIDEO_QUERY_VARIANTS_MAX:
+            break
+    return out
+
+
+async def _fetch_travel_stock_urls_standard(stock_query: str, landmark: str, country: str) -> list[str]:
+    for q, tag in _travel_video_query_variants(stock_query, landmark, country):
+        urls = await _fetch_pexels_then_pixabay(q)
+        if urls:
+            log.info(f"🎬 travel_video search variant [{tag}] accepted: {q!r} | urls={len(urls)}")
+            return urls
+        log.info(f"🎬 travel_video search variant [{tag}] empty: {q!r}")
+    return []
+
+
+async def _travel_video_select_clip_from_urls(
+    urls: list[str],
+    tmpdir: str,
+    tier_tag: str,
     stock_query: str,
     landmark: str,
     country: str,
-    tmpdir: str,
 ) -> str | None:
-    """Повертає шлях до нормалізованого відео ≤ TRAVEL_VIDEO_MAIN_MAX_SEC."""
-    urls: list[str] = []
-    urls.extend(await fetch_pexels_videos(stock_query))
+    """Один кліп: перший успішний URL за порядком видачі API (найрелевантніший).
+    Раніше качали кілька файлів і порівнювали тривалість — через це в логах було 3–4 GET і могли
+    «перемогти» нерелевантні кліпи з нижчого місця у списку."""
     if not urls:
-        urls.extend(await fetch_pixabay_videos(stock_query))
-    if not urls:
-        q2 = f"{landmark} {country} landmark vertical"
-        urls.extend(await fetch_pexels_videos(q2))
-        urls.extend(await fetch_pixabay_videos(q2))
-    if not urls:
-        log.warning("⚠️ No stock video URLs")
         return None
 
-    norm_paths: list[str] = []
-    total = 0.0
-    # Пріоритет: один "готовий" кліп ~пів хвилини, щоб уникнути склейки та пришвидшити рендер.
-    best_single: tuple[str, float] | None = None
-    for i, u in enumerate(urls):
-        if total >= TRAVEL_VIDEO_MAIN_MAX_SEC:
-            break
-        raw_path = os.path.join(tmpdir, f"raw_{i}.mp4")
-        npath = os.path.join(tmpdir, f"norm_{i}.mp4")
+    chosen: tuple[str, float, float, int] | None = None  # npath, raw_d, norm_d, url_index
+    try_urls = urls[:TRAVEL_VIDEO_STOCK_URLS_MAX_TRY]
+    for i, u in enumerate(try_urls):
+        raw_path = os.path.join(tmpdir, f"{tier_tag}_raw_{i}.mp4")
+        npath = os.path.join(tmpdir, f"{tier_tag}_norm_{i}.mp4")
         if not await download_url_to_file(u, raw_path):
             continue
         raw_d = ffprobe_duration_seconds(raw_path)
@@ -2660,42 +2897,71 @@ async def build_travel_video_main_from_stock(
         d = ffprobe_duration_seconds(npath)
         if d <= 0:
             continue
-        if TRAVEL_VIDEO_SINGLE_CLIP_MIN_SEC <= raw_d <= TRAVEL_VIDEO_SINGLE_CLIP_MAX_SEC:
-            # Найкраще беремо найближчий до цілі основного ролика.
-            score = abs(raw_d - TRAVEL_VIDEO_MAIN_MAX_SEC)
-            if best_single is None or score < abs(best_single[1] - TRAVEL_VIDEO_MAIN_MAX_SEC):
-                best_single = (npath, raw_d)
-                if score <= 2.0:
-                    break
-        norm_paths.append(npath)
-        total += d
-        if total >= TRAVEL_VIDEO_MAIN_MAX_SEC - 0.5:
-            break
+        in_band = TRAVEL_VIDEO_SINGLE_CLIP_MIN_SEC <= raw_d <= TRAVEL_VIDEO_SINGLE_CLIP_MAX_SEC
+        duration_score = abs(d - TRAVEL_VIDEO_MAIN_MAX_SEC) + (0.0 if in_band else 8.0)
+        chosen = (npath, raw_d, d, i)
+        log.info(
+            f"🎬 travel_video stock [{tier_tag}] first OK idx={i}/{len(try_urls)} "
+            f"duration_score={duration_score:.2f} url={u[:80]}..."
+        )
+        break
 
-    if best_single:
-        out = os.path.join(tmpdir, "main_segment.mp4")
-        if _run_ffmpeg(
-            [
-                FFMPEG_BIN,
-                "-y",
-                "-i",
-                best_single[0],
-                "-t",
-                str(TRAVEL_VIDEO_MAIN_MAX_SEC),
-                "-c",
-                "copy",
-                out,
-            ]
-        ):
-            return out
-
-    if not norm_paths:
+    if not chosen:
         return None
 
-    out = os.path.join(tmpdir, "main_segment.mp4")
-    if not concat_videos_ffmpeg(norm_paths, out, TRAVEL_VIDEO_MAIN_MAX_SEC):
+    out = os.path.join(tmpdir, f"main_segment_{tier_tag}.mp4")
+    if _run_ffmpeg(
+        [
+            FFMPEG_BIN,
+            "-y",
+            "-i",
+            chosen[0],
+            "-t",
+            str(TRAVEL_VIDEO_MAIN_MAX_SEC),
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "27",
+            "-an",
+            out,
+        ]
+    ):
+        log.info(
+            f"✅ travel_video main clip [{tier_tag}]: stock_query={stock_query!r} | "
+            f"{landmark}, {country} | picked_result_index={chosen[3]}"
+        )
+        return out
+
+    return None
+
+
+async def build_travel_video_main_from_stock(
+    stock_query: str,
+    landmark: str,
+    country: str,
+    tmpdir: str,
+) -> str | None:
+    """Повертає шлях до нормалізованого відео ≤ TRAVEL_VIDEO_MAIN_MAX_SEC.
+    Пошук базується на суворих шаблонах landmark+country; model stock_query використовується лише fallback.
+    """
+    urls = await _fetch_travel_stock_urls_standard(stock_query, landmark, country)
+    if not urls:
+        log.warning("⚠️ No stock video URLs")
         return None
-    return out
+
+    path = await _travel_video_select_clip_from_urls(
+        urls, tmpdir, "std", stock_query, landmark, country
+    )
+    if not path:
+        return None
+    final = os.path.join(tmpdir, "main_segment.mp4")
+    try:
+        os.replace(path, final)
+    except OSError:
+        shutil.copy2(path, final)
+    return final
 
 
 async def publish_travel_video(rubric: str, redis_client: UpstashRedis):
@@ -2729,6 +2995,7 @@ async def publish_travel_video(rubric: str, redis_client: UpstashRedis):
                 country = str(bundle.get("country", "")).strip()
                 category = str(bundle.get("category", "")).strip()
                 stock_q = str(bundle.get("stock_query", "")).strip()
+                log.info(f"📦 travel_video place: {lm} ({country}) | stock_query={stock_q!r}")
 
                 main_seg = await build_travel_video_main_from_stock(
                     stock_q, lm, country, tmpdir
@@ -2756,39 +3023,18 @@ async def publish_travel_video(rubric: str, redis_client: UpstashRedis):
                     log.warning(f"⚠️ [NF] travel_video TTS failed cycle {cycle}")
                     continue
 
-                music_path = None
-                mu = await fetch_pixabay_music_url()
-                if mu:
-                    music_path = os.path.join(tmpdir, "music.mp3")
-                    if not await download_url_to_file(mu, music_path):
-                        music_path = None
-
-                mixed_mp3 = os.path.join(tmpdir, "mixed.mp3")
-                if not mix_voice_and_music(voice_mp3, music_path, mixed_mp3):
-                    continue
-
                 muxed = os.path.join(tmpdir, "main_with_audio.mp4")
-                if not mux_video_audio_pad(main_seg, mixed_mp3, muxed):
+                # Музику вимкнено: використовуємо чистий voiceover.
+                if not mux_video_audio_pad(main_seg, voice_mp3, muxed):
                     log.warning(f"⚠️ [NF] travel_video mux failed cycle {cycle}")
                     continue
 
                 final_path = os.path.join(tmpdir, "final_telegram.mp4")
-                wm_png = os.path.join(tmpdir, "brand_wm.png")
-                try:
-                    wm_bytes = await render_quote_brand_watermark_png_bytes()
-                    with open(wm_png, "wb") as f:
-                        f.write(wm_bytes)
-                except Exception as e:
-                    wm_png = None
-                    log.warning(f"⚠️ [NF] travel_video watermark render failed cycle {cycle}: {e}")
-
-                if not final_encode_for_telegram(muxed, final_path, wm_png):
-                    log.warning(
-                        f"⚠️ [NF] travel_video final encode with watermark failed cycle {cycle} — retrying without watermark"
-                    )
-                    if not final_encode_for_telegram(muxed, final_path, None):
-                        log.warning(f"⚠️ [NF] travel_video final encode failed cycle {cycle}")
-                        continue
+                # Без quote-watermark: накладення «Improve Your English» виглядає чужорідно на travel-стоку
+                # (користувачі сприймають як «зайвий текст під кінець»).
+                if not final_encode_for_telegram(muxed, final_path, None):
+                    log.warning(f"⚠️ [NF] travel_video final encode failed cycle {cycle}")
+                    continue
 
                 sz_mb = os.path.getsize(final_path) / (1024 * 1024)
                 log.info(f"📦 travel_video final size: {sz_mb:.2f} MB")
@@ -3159,35 +3405,38 @@ Rules:
                 f"\nDo NOT choose any of these city+country pairs again "
                 f"(same idea, even if spelling varies): {banned[-40:]}\n"
             )
-        return f"""You are a travel blogger and an English teacher. You write lively, emotional posts in English for Telegram and Instagram — like a real person, not a guidebook or Wikipedia.
-Your style:
-— conversational, warm, a little intimate; sometimes light humour
-— no pomposity; avoid empty clichés like "this city will enchant you", "hidden gem", "must-visit destination", "breathtaking" without a real detail
-— as if you're texting a friend, not selling a tour
-— no dry facts, years, or dates; no encyclopaedic tone
+        return f"""You are a travel guide writer. Write short, friendly descriptions of famous tourist cities and capitals for English learners (level A2).
 
-Task: write ONE short post about ONE place — a city, a small town, or a capital. The whole caption body must be **only {INTERESTING_CITIES_SENTENCES_MIN} to {INTERESTING_CITIES_SENTENCES_MAX} sentences** (the "sentences" array — nothing else).
+VERY IMPORTANT — choose ONLY well-known, highly visited tourist destinations: famous capitals (Paris, Tokyo, Rome, Bangkok, etc.) or top tourist cities (Barcelona, Prague, Istanbul, Dubai, New York, Kyoto, etc.). Do NOT pick small unknown towns or obscure places.
 
-Content focus (no separate "hook" line, no dramatic opener): start straight into what feels real about the place — what makes it special, one or two concrete spots or small moments, maybe a brief personal aside. **Do NOT** add a punchy advertising-style hook at the start. **Do NOT** end with a question to the reader, a "what do you think?", or a tagged-on CTA — the last sentence should simply land (feeling or image), not ask something.
+Task: write about ONE place. The text must be exactly {INTERESTING_CITIES_SENTENCES_MIN} to {INTERESTING_CITIES_SENTENCES_MAX} sentences.
+
+Writing style:
+— Simple English, level A2: short sentences, common words, easy grammar
+— Warm and natural tone — like a friend telling you about a place, not a robot or Wikipedia
+— Tell what the city is FAMOUS FOR, what tourists can SEE or DO there, and why it is worth visiting
+— Use real, specific details (a famous building, a food, a street, a view) — not vague words like "beautiful" or "amazing" alone
+— No first person ("I", "we", "my") — write for everyone, in general
+— No questions at the end, no calls to action, no hashtags
 
 {banned_note}{history_note}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
-  "city_name": "English name of the place",
+  "city_name": "English name of the city",
   "country": "English name of the country",
-  "photo_query": "compact English keywords for stock photo search (place + country + one visual cue; avoid keyword spam)",
+  "photo_query": "city name + country + ONE specific landmark or visual (e.g. 'Paris France Eiffel Tower', 'Kyoto Japan temple', 'Istanbul Turkey Hagia Sophia')",
   "sentences": [
-    "{INTERESTING_CITIES_SENTENCES_MIN} to {INTERESTING_CITIES_SENTENCES_MAX} strings only; each string is ONE complete sentence.",
-    "..."
+    "Sentence 1",
+    "Sentence 2",
+    "Sentence 3",
+    "Sentence 4 (optional)"
   ]
 }}
 Rules:
-- The "sentences" array MUST have length between {INTERESTING_CITIES_SENTENCES_MIN} and {INTERESTING_CITIES_SENTENCES_MAX} inclusive.
-- English ONLY in all fields (no Ukrainian, no Russian). No emoji, no flag symbols.
-- Natural spoken English (B1-ish): clear for learners; avoid rare jargon.
-- No numbered list markers in the text (no "1.", "2." at the start of a sentence).
-- Pick ONE interesting place anywhere in the world — vary continents over time. Be specific.
-- "photo_query": keywords for a strong photo of THAT place (Unsplash/Pexels/Pixabay).
+- The "sentences" array MUST have {INTERESTING_CITIES_SENTENCES_MIN} to {INTERESTING_CITIES_SENTENCES_MAX} items.
+- English ONLY in all fields. No emoji, no flag symbols, no Cyrillic.
+- A2 vocabulary: no rare or complex words.
+- "photo_query": must include city name + country + a specific famous landmark or visual detail for a great stock photo result.
 - Do not repeat places from the banned list above."""
 
     if rubric == "travel_video_landmark":
@@ -3199,22 +3448,38 @@ Rules:
                 f"(same place even if spelling varies): {banned[-60:]}\n"
             )
         cats = ", ".join(TRAVEL_VIDEO_LANDMARK_CATEGORIES)
-        return f"""You are an English teacher. Pick ONE famous real-world landmark (a building, bridge, mountain, waterfall, temple, etc.) — NOT a whole city, NOT a vague region.
+        return f"""You are an English teacher creating travel video content. Pick ONE world-famous landmark that has good stock video footage on sites like Pexels or Pixabay.
+
+IMPORTANT — choose landmarks that are VERY well known and photographed: Eiffel Tower, Colosseum, Machu Picchu, Taj Mahal, Great Wall, Sagrada Familia, Big Ben, Hagia Sophia, Angkor Wat, Acropolis, Petra, Mount Fuji, Niagara Falls, Burj Khalifa, Statue of Liberty, etc. Famous = more stock video available.
 {banned_note}{history_note}
 Allowed categories (pick exactly one for "category" — must match one string exactly):
 {cats}
-Do NOT use UNESCO as a category label. Do not focus the text on UNESCO listing; just describe the place for learners.
+
 Return ONLY valid JSON, no markdown, no extra text:
 {{
   "landmark_name": "English name of the landmark",
   "country": "English name of the country",
   "category": "one of the allowed category strings above (exact match)",
-  "stock_query": "English keywords for stock VIDEO search (landmark + country + vertical/portrait; no quotes)"
+  "stock_query": "landmark name + country + ONE specific visual detail (see rules below)"
 }}
-Rules:
+
+Rules for "stock_query" — this is the most important field:
+- Start with the EXACT landmark name and country (e.g. "Eiffel Tower Paris")
+- Add ONE concrete visual: the main material, a specific view, or time of day
+  GOOD: "Eiffel Tower Paris iron lattice golden sunset"
+  GOOD: "Taj Mahal Agra white marble reflecting pool"
+  GOOD: "Colosseum Rome ancient stone exterior wide"
+  GOOD: "Machu Picchu Peru stone ruins mountain mist"
+  BAD: "Eiffel Tower France travel landmark architecture" (too generic)
+  BAD: "Taj Mahal India tourist famous monument" (pulls random tourist footage)
+- 4–12 words total, no commas, no quotes
+- Do NOT add: travel, tourist, people, culture, vlog, lifestyle, 4k, vertical, drone (unless drone is the ONLY shot that shows this place well)
+- The landmark name MUST appear first in the query
+
+General rules:
 - English ONLY in all fields.
-- Be factually plausible; do not invent dangerous or offensive content.
-- Vary continents and landmark types over time when possible."""
+- Vary continents and landmark types over time when possible.
+- Do not repeat places from the banned list above."""
 
     if rubric == "travel_video_narration":
         landmark = str(extra.get("landmark_name", "")).strip()
@@ -3778,6 +4043,45 @@ def build_interesting_cities_signature(data: dict) -> str:
     return _normalize_text(f"{city}|{country}|{body}")[:400]
 
 
+def interesting_cities_photo_query_variants(city: str, country: str, photo_query: str = "") -> list[str]:
+    """Generate specific photo search queries for interesting_cities.
+
+    Prioritises the Gemini-provided photo_query (which includes a landmark),
+    then falls back to progressively broader city variants.
+    """
+    city = " ".join((city or "").strip().split())
+    country = " ".join((country or "").strip().split())
+    base = " ".join(x for x in (city, country) if x).strip()
+
+    variants: list[str] = []
+
+    # 1. Gemini-provided query (most specific — landmark-focused)
+    pq = " ".join((photo_query or "").strip().split())
+    if pq:
+        variants.append(pq)
+        # Same query but explicitly asking for landmark/tourist photo
+        variants.append(f"{pq} tourist landmark")
+
+    # 2. City + country with specific visual keywords
+    variants += [
+        f"{base} famous landmark",
+        f"{base} iconic view",
+        f"{base} tourist attraction",
+        f"{base} historic center",
+        f"{base} cityscape panorama",
+    ]
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for q in variants:
+        n = _normalize_text(q)
+        if not n or n in seen:
+            continue
+        seen.add(n)
+        out.append(q)
+    return out
+
+
 def validate_interesting_cities(
     data: dict,
     used_history: list,
@@ -4147,7 +4451,7 @@ def build_vocabulary_15(data: dict) -> str:
     align-items: baseline;
     gap: 0.25em;
     line-height: 1.1;
-    max-width: 100%;
+    max-width: 33.333%;
   }}
   .v15-brand-gold {{
     font-style: italic;
@@ -4277,8 +4581,9 @@ def build_vocabulary_15(data: dict) -> str:
 # (не .v15-fit-root). Верхня межа шрифту списку не фіксована 56px — інакше лишається порожнє місце по вертикалі.
 VOCABULARY_15_FIT_JS = """
 () => {
-  var BRAND_TAGLINE_WIDTH_FRAC = 0.5;
-  var BRAND_FONT_MAX_FRAC = 0.28;
+  /* ~1/3 ширини картки — бренд не розтягується на пів зображення */
+  var BRAND_TAGLINE_WIDTH_FRAC = 1 / 3;
+  var BRAND_FONT_MAX_FRAC = 0.18;
   var TAGLINE_FONT_MAX_FRAC = 0.2;
 
   function fitFontToMaxWidth(sizeEl, measureEl, targetW, minPx, maxPx) {
@@ -4671,28 +4976,27 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
             ic_data = await generate_interesting_cities_content(
                 history_ic, extra, recent_ic_sig, max_attempts=3
             )
-            photo_query = str(ic_data.get("photo_query", "")).strip()
-            if not photo_query:
-                photo_query = (
-                    f"{ic_data.get('city_name', '')} {ic_data.get('country', '')} city travel landscape"
-                )
-            log.info(f"🔍 Photo query for [interesting_cities]: '{photo_query}'")
-            use_topics_ic = True
-            photo_url = await fetch_photo(
-                photo_query, use_topics=use_topics_ic, pick_random=True
-            )
+            city_name = str(ic_data.get("city_name", "")).strip()
+            country_name = str(ic_data.get("country", "")).strip()
+            ic_photo_query = str(ic_data.get("photo_query", "")).strip()
+            query_variants = interesting_cities_photo_query_variants(city_name, country_name, ic_photo_query)
+            log.info(f"🔍 Photo queries for [interesting_cities]: {query_variants}")
             recent_photo_urls = await history_mgr.get_recent_photo_urls(rubric, limit=PHOTO_URL_CHECK_WINDOW)
-            for _ in range(PHOTO_URL_REFETCH_ATTEMPTS):
-                if photo_url and photo_url in set(recent_photo_urls):
-                    log.warning(f"⚠️ Repeated photo URL detected for [{rubric}] — refetching")
-                    refetch_q = (
-                        f"{photo_query} cityscape landmark "
-                        f"{random.choice(['street', 'skyline', 'old town', 'waterfront', 'architecture'])}"
-                    )
-                    photo_url = await fetch_photo(
-                        refetch_q, use_topics=use_topics_ic, pick_random=True
-                    )
-                else:
+            recent_set = set(recent_photo_urls)
+            for q in query_variants:
+                for _ in range(PHOTO_URL_REFETCH_ATTEMPTS):
+                    # 1) Строгий Unsplash-підбір (без selfie/portrait/fashion)
+                    candidate = await fetch_photo_unsplash_city_strict(q)
+                    if not candidate:
+                        continue
+                    if candidate in recent_set:
+                        log.warning(
+                            f"⚠️ Repeated photo URL detected for [{rubric}] with query '{q}' — retrying"
+                        )
+                        continue
+                    photo_url = candidate
+                    break
+                if photo_url:
                     break
             if not photo_url:
                 log.error(f"❌ No photo available for [{rubric}] — SKIPPING POST")
