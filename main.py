@@ -201,8 +201,62 @@ TRAVEL_VIDEO_STOCK_SOURCE_RELAX_MIN_SEC = 18.0
 TRAVEL_VIDEO_STOCK_SOURCE_RELAX_MAX_SEC = 42.0
 TRAVEL_VIDEO_QUERY_VARIANTS_MAX = 6
 
-INTERESTING_CITIES_SENTENCES_MIN = 3
+INTERESTING_CITIES_SENTENCES_MIN = 4
 INTERESTING_CITIES_SENTENCES_MAX = 4
+
+# Формати рубрик для interesting_cities — Short & Aesthetic, мікс укр + англ
+INTERESTING_CITIES_FORMATS: list[dict] = [
+    {
+        "id": "city_vibe",
+        "label": "City Vibe",
+        "emoji": "🏰",
+        "instruction": (
+            "Format: 'City Vibe' — atmosphere and key adjective.\n"
+            "Structure (return exactly in 'sentences' array, 4 items):\n"
+            "1. City header: '[city_emoji] City: [CityName], [Country] [country_flag_emoji]'\n"
+            "2. 2-3 short Ukrainian sentences: emotional description of the city atmosphere — "
+            "what makes it special, what it smells/feels like, why come here. Vivid, warm, personal.\n"
+            "3. Key English word with Ukrainian translation and one example sentence: "
+            "'✨ Key Word: [EnglishWord] — [Ukrainian translation].\n[Example English sentence using it (A2, max 15 words).]'\n"
+            "4. Bilingual poll question for engagement. "
+            "Use format: 'English question?\\n[emoji1] — option1  [emoji2] — option2  Пиши в коментарях! 👇'"
+        ),
+    },
+    {
+        "id": "must_see_spot",
+        "label": "Must-See Spot",
+        "emoji": "📍",
+        "instruction": (
+            "Format: 'Must-See Spot' — focus on ONE specific famous place in the city.\n"
+            "Structure (return exactly in 'sentences' array, 4 items):\n"
+            "1. City header: '📍 City: [CityName], [Country] [country_flag_emoji]'\n"
+            "2. 2-3 short Ukrainian sentences: describe ONE iconic landmark or spot — "
+            "what it is, what you see/feel there, why it is worth visiting. Use words like 'skyline', 'hidden gem' in English inside Ukrainian text for natural mix.\n"
+            "3. Key English word with Ukrainian translation and example: "
+            "'✨ Key Word: [EnglishWord] — [Ukrainian translation].\n[Example English sentence (A2, max 15 words).]'\n"
+            "4. A bilingual preference question comparing two options. "
+            "Use format: 'What would you choose: [option A] чи [option B]?\\n[emoji1] [option A]  [emoji2] [option B]  👇'"
+        ),
+    },
+    {
+        "id": "local_flavor",
+        "label": "Local Flavor",
+        "emoji": "🍽️",
+        "instruction": (
+            "Format: 'Local Flavor' — one unique local detail (food, tradition, street, color, sound).\n"
+            "Structure (return exactly in 'sentences' array, 4 items):\n"
+            "1. City header with flag: '[country_flag_emoji] City: [CityName], [Country]'\n"
+            "2. 2-3 short Ukrainian sentences: describe ONE local flavor detail vividly — "
+            "a famous dish, a colorful tradition, a distinctive street feature. "
+            "Mix 1-2 English words naturally into Ukrainian text (e.g. 'to wander', 'vibrant').\n"
+            "3. Key English word with Ukrainian translation and example: "
+            "'✨ Key Word: [EnglishWord] — [Ukrainian translation].\n[Example English sentence (A2, max 15 words).]'\n"
+            "4. An open Ukrainian question asking about the person's favourite city for walking/food/atmosphere. "
+            "End with 'Напиши назву англійською! ✍️'"
+        ),
+    },
+]
+
 
 PLACEHOLDER_RUBRICS = frozenset()
 
@@ -249,45 +303,87 @@ PHOTO_RELAX_THEMES: list[dict] = [
     {"id": "waterfall", "label": "a waterfall (water, rocks, mist)", "photo_query": "waterfall nature forest rocks"},
 ]
 
-# Стиль тексту для п’ятничного photo_relax (ротація окремо від теми фото)
+# Формати рубрик для photo_relax — Short & Aesthetic, мікс англійської + української
+# Кожен формат = унікальний тип посту, що читається за 15 секунд і дає 1-2 нових слова
 PHOTO_RELAX_VOICE_STYLES: list[dict] = [
     {
-        "id": "romantic_poetic",
+        "id": "word_of_nature",
+        # 🌿 Word of the Day через природу: 1 слово + переклад + приклад + питання двома мовами
         "instruction": (
-            "Voice: romantic / gently poetic. Use simple imagery or a soft metaphor; keep sentences easy to read. "
-            "Sound intimate and unhurried, never grand or theatrical."
+            "Format: 'Word of the Day' through nature.\n"
+            "Structure — return exactly 4 strings in 'sentences' array:\n"
+            "1. Header: '🌿 Word of the Day: [EnglishWord]  Переклад: [Ukrainian translation]'\n"
+            "2. One example sentence in English using the word (A2 level, max 15 words, matches the photo scene exactly).\n"
+            "3. Ukrainian translation of that example sentence.\n"
+            "4. A short bilingual call-to-action question — English first, then Ukrainian on a new line. "
+            "Use this exact format: 'English question?\\nUkrainian question?'\n"
+            "WORD RULES: pick a vivid, visual English word that perfectly describes something visible in the photo "
+            "(e.g. Breeze, Dappled, Serene, Mist, Lush, Rugged, Tranquil, Glimmer, Crisp, Vast). "
+            "Max 10 letters. A2-friendly. No word from recent history."
         ),
     },
     {
-        "id": "minimal_modern",
+        "id": "feel_the_moment",
+        # 🌄 Feel the Moment: атмосферний опис сцени + 2 ключових слова + питання
         "instruction": (
-            "Voice: minimal / modern. Four short sentences, very lean wording, stylish and a little reflective. "
-            "No filler; each line should feel clean and quiet."
+            "Format: 'Feel the Moment' — emotional atmospheric scene description.\n"
+            "Structure — return exactly 4 strings in 'sentences' array:\n"
+            "1. Exactly the string: '🌄 Feel the Moment'\n"
+            "2. ONE short atmospheric English sentence (A2, max 15 words) describing the scene mood. "
+            "Then \\n then Ukrainian translation of that sentence. "
+            "Use format: 'English sentence.\\nUkrainian translation.'\n"
+            "3. Two key vocabulary items from the scene with Ukrainian glosses. "
+            "Use format: '✨ [word1] — [ua1]  ✨ [word2] — [ua2]'\n"
+            "4. A short bilingual personal question (where would you like to be / what do you feel). "
+            "Use format: 'English question?\\nUkrainian question?'"
         ),
     },
     {
-        "id": "instagram_lifestyle",
+        "id": "think_in_english",
+        # ☀️ Think in English: challenge — уяви сцену і опиши англійською + відповідь + слово
         "instruction": (
-            "Voice: Instagram / lifestyle. Warm and close, as if you are sharing a real moment with friends. "
-            "Natural, conversational, a bit upbeat about slowing down."
+            "Format: 'Think in English' — imagine & describe challenge.\n"
+            "Structure — return exactly 4 strings in 'sentences' array:\n"
+            "1. Exactly the string: '☀️ Think in English'\n"
+            "2. A short Ukrainian sentence describing what is visible in the photo. "
+            "Then on new line: 'Як це сказати англійською? Напиши в коментарях 👇'\n"
+            "3. Example answer in this format: "
+            "'👉 Можливий варіант: [English sentence, A2, max 15 words]\\n[Ukrainian translation of that sentence]'\n"
+            "4. ONE vocabulary highlight from the example sentence: '✨ [key word] — [Ukrainian translation]'"
         ),
     },
     {
-        "id": "calm_therapeutic",
+        "id": "mini_story",
+        # 🌊 Mini Story: коротка мікро-розповідь + 2 слова + питання
         "instruction": (
-            "Voice: calm / grounding. Soft reminder to breathe, slow down, and feel a little lighter after the week. "
-            "Gentle, reassuring, like a kind note to yourself — not clinical."
+            "Format: 'Mini Story' — a one-sentence micro-story that fits the photo scene.\n"
+            "Structure — return exactly 4 strings in 'sentences' array:\n"
+            "1. Exactly the string: '🌊 Mini Story'\n"
+            "2. ONE short English narrative sentence (A2, max 15 words, past simple, third person singular). "
+            "Then \\n then Ukrainian translation. "
+            "Use format: 'English story sentence.\\nUkrainian translation.'\n"
+            "3. Two vocabulary words from the story with Ukrainian translations. "
+            "Use format: '✨ [word1] — [ua1]  ✨ [word2] — [ua2]'\n"
+            "4. A short bilingual personal preference question (sea vs mountains, calm vs active, etc.). "
+            "Use format: 'English question?\\nUkrainian question?'"
         ),
     },
     {
-        "id": "escape_travel",
+        "id": "word_in_the_wild",
+        # ✨ Word in the Wild: рідкісне/красиве слово + пояснення + emoji-опитування
         "instruction": (
-            "Voice: small escape / wanderlust. Light wish to pause routine, change the view, or feel a bit of freedom. "
-            "Hopeful and light, not a travel brochure."
+            "Format: 'Word in the Wild' — one beautiful or descriptive English word perfectly matching the photo.\n"
+            "Structure — return exactly 4 strings in 'sentences' array:\n"
+            "1. Header: '✨ Word of the Day: [EnglishWord]  Переклад: [Ukrainian translation]'\n"
+            "2. Ukrainian explanation of why this word fits the photo (1-2 short sentences). "
+            "Then the English example sentence. "
+            "Use format: 'Ukrainian explanation. Example: \"English sentence (A2, max 15 words).\"'\n"
+            "3. Emoji reaction question about the photo mood. "
+            "Use format: 'Як ти сьогодні? [emoji1] — [option_ua1]  [emoji2] — [option_ua2]  Пиши реакцію! 👇'\n"
+            "4. One very short practical usage note in Ukrainian about this word (A2, 1 sentence max)."
         ),
     },
 ]
-
 # ──────────────────────────────────────────────
 # SITUATION PHRASES — 18 КАТЕГОРІЙ (РОТАЦІЯ)
 # ──────────────────────────────────────────────
@@ -1418,6 +1514,24 @@ class HistoryManager:
             log.info(f"🌿 photo_relax voice style index advanced: {current} → {next_idx}")
         except Exception as e:
             log.error(f"❌ Redis advance_photo_relax_voice_style_index error: {e}")
+
+    async def get_interesting_cities_format_index(self) -> int:
+        try:
+            val = await self.r.get("interesting_cities:format_index")
+            idx = int(val) if val is not None else 0
+            return idx % len(INTERESTING_CITIES_FORMATS)
+        except Exception as e:
+            log.error(f"❌ Redis get_interesting_cities_format_index error: {e} — using index 0")
+            return 0
+
+    async def advance_interesting_cities_format_index(self):
+        try:
+            current = await self.get_interesting_cities_format_index()
+            next_idx = (current + 1) % len(INTERESTING_CITIES_FORMATS)
+            await self.r.set("interesting_cities:format_index", str(next_idx))
+            log.info(f"🏙️ interesting_cities format index advanced: {current} → {next_idx}")
+        except Exception as e:
+            log.error(f"❌ Redis advance_interesting_cities_format_index error: {e}")
 
     async def get_travel_video_banned_places(self) -> list[str]:
         try:
@@ -3369,33 +3483,33 @@ Rules:
         vstyle = str(extra.get("voice_style_instruction", "")).strip()
         if not vstyle:
             vstyle = PHOTO_RELAX_VOICE_STYLES[0]["instruction"]
-        return f"""You write short English captions for a nature photo — like a real person, not a textbook.
-Context: this post goes out on a Friday for people who need to breathe out after the week. The image is ONLY nature / landscape matching: {visual} (theme id: {tid}).
+        return f"""You write short bilingual captions for a nature photo post on Telegram — Short & Aesthetic format.
 
-Writing style for THIS post (follow closely):
+CONCEPT: Each post is a mini English lesson disguised as beautiful content. Readable in 15 seconds. Gives 1-2 new words. The photo is ONLY nature / landscape: {visual} (theme id: {tid}).
+
+POST FORMAT FOR THIS POST (follow EXACTLY):
 {vstyle}
 
-Overall mood to capture: relief after the week, quiet, a little dreamy, the feeling that the weekend is near — inner "exhale", space to rest or imagine a small getaway. Warm, alive, lightly poetic sometimes, but NO pomposity, NO clichés like "this place will take your breath away" or "hidden gem".
+GENERAL RULES:
+- Mix English and Ukrainian as specified in the format above (do NOT write English-only).
+- Each of the 4 strings in "sentences" follows the structure defined in the format above.
+- English sentences must be A2 level: short, simple grammar, common words.
+- All content must match the nature scene ({visual}). Do NOT reference rain, night, cities, streets, or crowds.
+- Include a call-to-action question (in the appropriate sentence slot) to boost engagement.
+- Use emojis only where specified in the format (header emojis, ✨ markers). No extra emojis.
+- No hashtags.
+- Do not repeat the same opening or word from recent history.
 
 {history_note}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
   "sentences": [
-    "First sentence in English.",
-    "Second sentence in English.",
-    "Third sentence in English.",
-    "Fourth sentence in English."
+    "String 1 as defined by the format.",
+    "String 2 as defined by the format.",
+    "String 3 as defined by the format.",
+    "String 4 as defined by the format."
   ]
-}}
-Rules:
-- English ONLY (no Ukrainian, no Russian).
-- Exactly 4 separate strings in "sentences" — four full sentences total.
-- Clear, natural English (roughly A2–B1): mostly simple grammar; you may use a slightly richer word here if it fits the tone — still easy for learners.
-- Match the nature scene above; do NOT centre the text on rain, night, cities, streets, or crowds of people.
-- You may use "you" or stay neutral — your choice.
-- Do not repeat the same opening hook as in the recent history hints above.
-- No hashtags; no emojis (prefer none).
-- No bullet lists inside a sentence; each array item is one complete sentence."""
+}}"""
 
     if rubric == "interesting_cities":
         banned = extra.get("banned_cities") or []
@@ -3405,40 +3519,45 @@ Rules:
                 f"\nDo NOT choose any of these city+country pairs again "
                 f"(same idea, even if spelling varies): {banned[-40:]}\n"
             )
-        return f"""You are a travel guide writer. Write short, friendly descriptions of famous tourist cities and capitals for English learners (level A2).
+        fmt_id = str(extra.get("format_id", "city_vibe")).strip()
+        fmt_label = str(extra.get("format_label", "City Vibe")).strip()
+        fmt_emoji = str(extra.get("format_emoji", "🏰")).strip()
+        fmt_instruction = str(extra.get("format_instruction", "")).strip()
+        return f"""You are a travel content creator writing for a Telegram channel about English learning.
 
-VERY IMPORTANT — choose ONLY well-known, highly visited tourist destinations: famous capitals (Paris, Tokyo, Rome, Bangkok, etc.) or top tourist cities (Barcelona, Prague, Istanbul, Dubai, New York, Kyoto, etc.). Do NOT pick small unknown towns or obscure places.
+CONCEPT: Short & Aesthetic city post. Readable in 15 seconds. Mix of Ukrainian (emotional description) and English (keyword + example). Gives 1 useful new English word. Always ends with an engagement question.
 
-Task: write about ONE place. The text must be exactly {INTERESTING_CITIES_SENTENCES_MIN} to {INTERESTING_CITIES_SENTENCES_MAX} sentences.
+CURRENT FORMAT: {fmt_label} {fmt_emoji}
+FORMAT INSTRUCTIONS (follow EXACTLY):
+{fmt_instruction}
 
-Writing style:
-— Simple English, level A2: short sentences, common words, easy grammar
-— Warm and natural tone — like a friend telling you about a place, not a robot or Wikipedia
-— Tell what the city is FAMOUS FOR, what tourists can SEE or DO there, and why it is worth visiting
-— Use real, specific details (a famous building, a food, a street, a view) — not vague words like "beautiful" or "amazing" alone
-— No first person ("I", "we", "my") — write for everyone, in general
-— No questions at the end, no calls to action, no hashtags
+CITY SELECTION RULES:
+- Choose ONLY well-known, highly visited tourist cities or capitals: Paris, Tokyo, Rome, Bangkok, Barcelona, Prague, Istanbul, Dubai, New York, Kyoto, Vienna, Amsterdam, Lisbon, Edinburgh, etc.
+- Do NOT pick small unknown towns or obscure places.
+- Vary continents and city types over posts.
 
 {banned_note}{history_note}
 Return ONLY valid JSON, no markdown, no extra text:
 {{
   "city_name": "English name of the city",
   "country": "English name of the country",
-  "photo_query": "city name + country + ONE specific landmark or visual (e.g. 'Paris France Eiffel Tower', 'Kyoto Japan temple', 'Istanbul Turkey Hagia Sophia')",
+  "format_id": "{fmt_id}",
+  "photo_query": "city name + country + ONE specific landmark or visual (e.g. 'Paris France Eiffel Tower', 'Kyoto Japan temple')",
   "sentences": [
-    "Sentence 1",
-    "Sentence 2",
-    "Sentence 3",
-    "Sentence 4 (optional)"
+    "String 1 per format instructions",
+    "String 2 per format instructions",
+    "String 3 per format instructions",
+    "String 4 per format instructions"
   ]
 }}
 Rules:
-- The "sentences" array MUST have {INTERESTING_CITIES_SENTENCES_MIN} to {INTERESTING_CITIES_SENTENCES_MAX} items.
-- English ONLY in all fields. No emoji, no flag symbols, no Cyrillic.
-- A2 vocabulary: no rare or complex words.
-- "photo_query": must include city name + country + a specific famous landmark or visual detail for a great stock photo result.
-- Do not repeat places from the banned list above."""
-
+- "sentences" MUST have exactly 4 items following the format structure above.
+- Ukrainian text in sentences must be natural Ukrainian (not a literal translation).
+- English sentences in sentences must be A2 level (short, clear, common words).
+- Include country flag emoji in the header sentence (sentence 1).
+- "photo_query": city name + country + ONE specific famous landmark for best stock photo results.
+- Do not repeat places from the banned list above.
+- No standalone hashtags."""
     if rubric == "travel_video_landmark":
         banned = extra.get("banned_places") or []
         banned_note = ""
@@ -3974,12 +4093,10 @@ def validate_photo_relax(
     sents = _normalize_photo_relax_sentences(data)
     if not sents:
         return False, "need exactly 4 non-empty sentences in sentences[]"
-    cy = re.compile(r"[\u0400-\u04FF]")
     for i, s in enumerate(sents):
-        if len(s) > 300:
+        if len(s) > 400:
             return False, f"sentence {i+1} too long"
-        if cy.search(s):
-            return False, "Cyrillic not allowed"
+        # Bilingual format allowed — Ukrainian text expected in sentences
     sig = build_photo_relax_signature(sents)
     recent_norm = {_normalize_text(x) for x in recent_signatures if x}
     if sig in recent_norm:
@@ -4030,7 +4147,8 @@ def _normalize_interesting_cities_sentences(data: dict) -> list[str] | None:
     out = [str(x).strip() for x in raw]
     out = [x for x in out if x]
     n = len(out)
-    if n < INTERESTING_CITIES_SENTENCES_MIN or n > INTERESTING_CITIES_SENTENCES_MAX:
+    # New Short & Aesthetic format always returns 4 sentences; also accept 3 for backwards compat
+    if n < INTERESTING_CITIES_SENTENCES_MIN or n > 4:
         return None
     return out
 
@@ -4106,12 +4224,14 @@ def validate_interesting_cities(
         )
     cy = re.compile(r"[\u0400-\u04FF]")
     for i, s in enumerate(sents):
-        if len(s) > 220:
+        if len(s) > 400:
             return False, f"sentence {i+1} too long"
-        if cy.search(s) or _has_emoji_or_flag(s):
-            return False, f"sentence {i+1}: Cyrillic or emoji not allowed"
-    if cy.search(city) or cy.search(country) or _has_emoji_or_flag(city) or _has_emoji_or_flag(country):
-        return False, "city/country must be Latin letters only, no emoji"
+        # Bilingual format: Ukrainian text and emojis are now expected in sentences
+    # city_name and country must stay Latin-only (used for photo search queries)
+    if cy.search(city) or _has_emoji_or_flag(city):
+        return False, "city_name must be Latin letters only, no emoji"
+    if cy.search(country) or _has_emoji_or_flag(country):
+        return False, "country must be Latin letters only, no emoji"
 
     pk = _interesting_cities_place_key(city, country)
     banned = {_normalize_text(x) for x in (extra.get("banned_cities") or []) if x}
@@ -4756,6 +4876,9 @@ def clip_telegram_caption(text: str) -> tuple[str, bool]:
 
 
 def build_photo_relax_caption(data: dict) -> str:
+    """Збирає caption для photo_relax.
+    Sentences тепер можуть містити \n всередині рядка (мікс EN+UA).
+    Між блоками — подвійний перенос рядка для читабельності в Telegram."""
     raw = data.get("sentences")
     if not isinstance(raw, list):
         return ""
@@ -4764,13 +4887,16 @@ def build_photo_relax_caption(data: dict) -> str:
 
 
 def build_interesting_cities_caption(data: dict) -> str:
-    city = str(data.get("city_name", "")).strip()
-    country = str(data.get("country", "")).strip()
+    """Збирає caption для interesting_cities.
+    Формат Short & Aesthetic — sentences вже містять заголовок міста (sentence[0]),
+    тому більше не дублюємо city/country окремо.
+    Sentences можуть містити \n всередині (мікс укр+англ)."""
     sents = _normalize_interesting_cities_sentences(data)
     if not sents:
+        city = str(data.get("city_name", "")).strip()
+        country = str(data.get("country", "")).strip()
         return f"{city}, {country}".strip(", ")
-    body = "\n\n".join(sents)
-    return f"{city}, {country}\n\n{body}"
+    return "\n\n".join(sents)
 
 
 async def send_photo_to_telegram(
@@ -4959,7 +5085,15 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
             )
 
         elif rubric == "interesting_cities":
-            extra = {}
+            ic_fmt_idx = await history_mgr.get_interesting_cities_format_index()
+            ic_fmt = INTERESTING_CITIES_FORMATS[ic_fmt_idx]
+            extra = {
+                "format_id": ic_fmt["id"],
+                "format_label": ic_fmt["label"],
+                "format_emoji": ic_fmt["emoji"],
+                "format_instruction": ic_fmt["instruction"],
+            }
+            log.info(f"🏙️ interesting_cities format: {ic_fmt['id']}")
 
         photo_url = None
         photo_b64 = None
@@ -5161,6 +5295,7 @@ async def publish_image_card(rubric: str, redis_client: UpstashRedis):
                 await history_mgr.add_signature(
                     "interesting_cities", build_interesting_cities_signature(data)
                 )
+                await history_mgr.advance_interesting_cities_format_index()
 
         elapsed = time.time() - start_time
         log.info(f"⏱️ [{rubric}] completed in {elapsed:.1f}s | success={success}")
